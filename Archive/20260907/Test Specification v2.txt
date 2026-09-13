@@ -1,0 +1,484 @@
+# TEST SPECIFICATION (Deliverable U)
+**Status: Draft v0.1 — Not Frozen**
+Source: TDD v4 §193–207, §235–237, Law 1–25; Canonical IR Specification v2; Domain Specification v2; API Contract Specification v2; System Registry v2; Dependency & Layer Specification v2
+Normative: Yes (pending Phase-0 freeze per TDD §260)
+
+---
+
+## 0. Status Statement
+
+This document is downstream of Canonical IR Specification v0.2, Domain Specification v0.2, and API Contract Specification v0.1 — none of which are frozen. It inherits their open blockers without resolving any of them:
+
+- Tests for `VoiceReference`, `RelationshipReference`, `ProvenanceReference` are specified here as designed, but per Domain Spec §14 these types are **not Registry-authorized**. Their test suites are written but MUST NOT run against real implementations until Registry sync occurs — they exist so the suite is ready the moment authorization lands.
+- Entity/Occurrence/Event category boundary (Domain Spec §16.1) is open; tests below treat `NoteEvent` under its current provisional Event-category contract only.
+- TimeSpan boundary vocabulary (Domain Spec §16.3) is provisional; TimeSpan tests below cover only what is fixed.
+- Nothing here overrides Canonical IR Spec §12's open issues.
+
+---
+
+## 1. Purpose
+
+This document answers: **how will we know the implementation is correct?**
+
+It is not a description of what the domain objects are (Deliverable B), how software touches them (Deliverable N/API Contract), or how validation is architected at runtime (Deliverable R). It is the specification of the **tests** that must exist and pass before an object, transformation, or subsystem is considered correct. For an authorized behavior within the current scope, absence of its required test coverage means that behavior is unverified. Deferred categories (§11) are intentionally unimplemented and unverified until their owning deliverables land.
+
+Per TDD §201, the required test categories are:
+
+```
+Unit
+Property-Based
+Invariant
+Golden
+Serialization
+Migration
+Round-Trip
+Relationship
+Provenance
+Context
+Theory
+Transformation
+Analysis Regression
+Generation Validation
+Corpus Regression
+Performance
+Security
+Fuzz
+```
+
+This draft gives full treatment to the seven the current phase actually exercises — **Invariant, Property-Based, Serialization/Round-Trip, Provenance, Transformation, Relationship, and Canonical Equality** (equality is folded into Invariant/Serialization per Registry, see §9) — plus Architecture tests, which TDD §193 requires but §201 doesn't name as its own row. The remainder (Context, Theory, Analysis Regression, Generation Validation, Corpus Regression, Performance, Security, Fuzz, Migration) are stubbed in §11 with their owning future deliverable, since no Phase-1 object exercises them yet.
+
+---
+
+## 2. Test Category Taxonomy
+
+| Category | Answers | Applies to | Primary source |
+|---|---|---|---|
+| Invariant | Can this object ever exist in an illegal state? | Every object with Domain Spec invariants | Domain Spec, per-object §; TDD §196–198 |
+| Property-Based | Does a general rule hold across the input space, not just examples? | Value objects, arithmetic, symmetric operations | TDD §202 |
+| Serialization / Round-Trip | Does `deserialize(serialize(x)) == x` under canonical equality? | All 10 Phase-1 objects + 3 proposed references | API Contract §4–5; TDD §124–125, §235 |
+| Provenance | Is lineage present, correct, and non-dangling wherever required? | Derived/generated objects; `ProvenanceReference` | Domain Spec §13; TDD §198 |
+| Transformation | Does an operation preserve invariants and never mutate its input? | Any op producing a new object from existing ones | TDD §146, §200; Law 20 |
+| Relationship | Are edges valid, and do they carry required temporal/context metadata? | `Relationship`, `RelationshipReference` | TDD §79, §197 |
+| Canonical Equality | Do two representations of "the same fact" compare equal under the right equality notion, and not under the wrong one? | Cross-cutting | System Registry `IdentityEquality/ValueEquality/StructuralEquality/SemanticEquality/CanonicalEquality`; Law 23 |
+| Architecture | Does the code obey the layer/import boundaries the spec requires? | Module graph | TDD §193; Dependency & Layer Spec |
+| Golden | Does a critical transformation reproduce a version-controlled expected output? | Named transformations (e.g. transposition) | TDD §203 |
+| Unit | Does one function do the one thing its contract says? | All | Baseline, not separately detailed below |
+
+---
+
+## 3. Invariant Tests
+
+**Rule (API Contract C3):** every constructor validates Domain Spec invariants synchronously and raises `InvariantViolation` on violation. There is no "construct now, validate later" path. Every invariant test below is therefore a **construction-time** test, not a post-hoc check.
+
+### 3.1 General pattern
+
+For every object with declared invariants:
+
+```
+test: construct with each individually-violated invariant → raises InvariantViolation
+test: construct with all invariants satisfied → succeeds, no InvariantViolation
+test: no code path constructs the object bypassing the invariant check (i.e. no alternate
+      constructor, no deserialize path, no copy path skips validation)
+```
+
+### 3.2 Per-object invariant table (Phase-1 slice)
+
+| Object | Invariant under test | Source |
+|---|---|---|
+| `EntityID` | non-empty; no positional leakage (array index, measure number) | Domain Spec §3, Law 16 |
+| `EntityID` | stable across all revisions of the entity it identifies | Domain Spec §3 |
+| `Duration` | `>= 0`; denominator `> 0`; never float/double | Domain Spec §4, Law 19 |
+| `MusicalTime` | exact rational; arithmetic preserves exactness | Domain Spec §5, Law 19 |
+| `TimeSpan` | `end >= start`; `boundary` field required, no implicit default | Domain Spec §6 |
+| `PitchIdentity` | construction does not require tuning-system parameters; `token` is not EntityID-typed | Domain Spec §16.4 (placeholder — TBD Deliverable D) |
+| `PitchSpelling` | two enharmonically-equivalent spellings are NOT value-equal | Domain Spec §11 |
+| `NoteEvent` | `duration >= 0`; `provenance` state explicitly present or absent, never omitted | Domain Spec §9, API Contract C6 |
+| `NoteEvent` | `optional_voice`, if present, is a `VoiceReference` and nothing else | API Contract §4 |
+| `Voice` | does not carry an implicit Instrument/Staff/Part field in its required schema | Domain Spec §10 |
+| `VoiceReference` | carries no membership/containment fields (opaque pointer only) | Domain Spec §11 |
+| `RelationshipReference` | carries no predicate/scope/context/evidence fields (opaque pointer only) | Domain Spec §12 |
+| `ProvenanceReference` | `state` always explicit; never defaults to `absent` on omission | Domain Spec §13, API Contract §5.6 |
+| `ProvenanceReference` | `state=present` requires a syntactically valid `provenance_id`; non-dangling resolution is tested by the Provenance resolution layer (Deliverable K), not by this opaque reference constructor. `state=absent` requires no `provenance_id` | Domain Spec §13, API Contract §5.6/§6 |
+
+### 3.3 Fail-fast / no-partial-construction test
+
+```
+test: for every object type, feed a payload that fails validation partway through a
+      multi-field constructor → assert NO object instance is observable anywhere
+      (not returned, not partially stored, not cached) — only InvariantViolation propagates
+```
+
+This directly tests API Contract C3, distinct from simply checking the exception is raised.
+
+---
+
+## 4. Property-Based Tests
+
+Per TDD §202, foundational value objects use property tests over example tests wherever a general rule, not just a single input/output pair, is being claimed.
+
+### 4.1 Required properties (Phase-1 slice)
+
+```
+Duration:
+  ∀ a,b,k (k>0 integer): Duration(a,b) == Duration(k·a, k·b)      [Domain Spec §4]
+  ∀ valid constructor path: result.value >= 0                      [Law 19]
+  every successful construction stores/serializes the unique reduced rational
+    representation (reduction is a required postcondition of construction,
+    not merely of the equality operator)                            [Domain Spec §4]
+
+MusicalTime:
+  ∀ t: Duration, dt: Duration: exact(t + dt) == exact-rational-sum(t, dt)   [Domain Spec §5]
+  no float/double appears at any point in the computation             [Law 19, API Contract C5]
+  exact equality/arithmetic is tested WITHOUT assuming reduced-storage
+    semantics — Deliverable B does not require MusicalTime to store a reduced
+    form the way Duration does; do not impose Duration's postcondition here
+    unless a future Deliverable B revision states it explicitly            [Domain Spec §5]
+
+PitchSpelling:
+  ∀ s: PitchSpelling: deserialize(serialize(s)) == s, with no collapse to
+  an enharmonic equivalent                                         [Domain Spec §11]
+
+EntityID:
+  ∀ id: EntityID: value stable under serialization round-trip          [Domain Spec §3]
+
+Transposition (once Deliverable M lands, stubbed here per TDD §202 example set):
+  augmentation by factor 1 preserves value
+  double inversion under the same axis restores original pitch
+  retrograde applied twice restores original sequence
+```
+
+### 4.2 General pattern for any new Value object
+
+```
+test: identify the algebraic/semantic law the type's Domain Spec section claims
+      (reduction, exactness, non-collapse, stability, idempotence, symmetry)
+test: generate random valid inputs (not hand-picked examples) and assert the law holds
+test: assert the law's negation does NOT spuriously pass (mutation-test the property itself)
+```
+
+Property tests are required wherever Domain Spec text uses "any," "never," or "always" language about a Value type — those are exactly the claims a handful of examples cannot falsify.
+
+---
+
+## 5. Serialization Round-Trip Tests
+
+Per API Contract §2: every `.serialize()`/`.deserialize()` contract is an **object-level, abstract round-trip contract** — field presence, explicitness, and round-trip stability — not a wire-format spec (Deliverable O's scope). Tests here bind to the object-level contract regardless of eventual wire format.
+
+### 5.1 General pattern
+
+```
+test: ∀ object o constructed validly:
+      deserialize(serialize(o)) is canonically equal to o (§9)
+test: serialize(o) contains every field the object's Domain Spec section marks required,
+      with no silent omission (esp. provenance state — Domain Spec §13 forbids omission)
+test: deserialize(malformed/incomplete payload) raises InvariantViolation, never silently
+      defaults a required field (e.g. ProvenanceReference.state MUST NOT default to absent
+      on omission — API Contract §5.6)
+test: round-trip preserves the present/absent distinction on ProvenanceReference without
+      collapsing to a single "no provenance" case                    [Domain Spec §13]
+```
+
+### 5.2 Composite graph round trip (future/expanded scope) (TDD §235)
+
+TDD §235 specifies a full-graph round trip. Its object list is broader than the current Phase-1 slice — this section distinguishes what is testable now from what is a provisional placeholder:
+
+```
+Phase-1 currently testable graph objects:
+  events (NoteEvent), voice (Voice), provenance (ProvenanceReference)
+
+Future graph components — tests specified provisionally, NOT implementation-complete
+merely because a placeholder exists here:
+  sonority, context, interpretations, relationships
+```
+
+Verify after deserialize (full target state, reached incrementally as each component above lands):
+
+```
+  identity preserved            (EntityID unchanged)
+  version preserved             (Version unchanged)
+  canonical equality preserved  (§9 below)
+  relationships preserved       (§8 below — once Relationship/Deliverable G lands)
+  interpretations preserved     (non-authoritative status unchanged — Law 8 — once specified)
+  context preserved             (once Context/Deliverable H lands)
+  provenance preserved          (§6 below)
+```
+
+### 5.3 Non-goals (explicitly out of scope for this section)
+
+```
+byte layout / wire encoding (JSON vs protobuf vs CBOR)  → Deliverable O
+storage row shape                                        → Deliverable P
+cross-version schema migration                            → §11, Migration category, TDD §204
+```
+
+---
+
+## 6. Provenance Tests
+
+Grounded in Domain Spec §13 (`ProvenanceReference` three-state model) and TDD §198 (Provenance Invariants), and Law 10 (provenance is preserved) / Law 20 (transformations do not mutate inputs, they derive).
+
+### 6.1 Invariant-level
+
+```
+test: ancestor references in a Derivation exist (no dangling ancestor)      [TDD §198]
+test: activity references exist                                             [TDD §198]
+test: agent references exist                                                [TDD §198]
+test: mandatory derivation edges exist where the schema requires them       [TDD §198]
+test: provenance graph is acyclic where DAG semantics are declared          [TDD §198,
+                                                                             System Registry:
+                                                                             ProvenanceGraph]
+test: a provenance graph containing an unresolved state=present reference fails
+      Provenance graph validation/resolution per Deliverable K — this is a
+      graph/resolution-layer test, not a constructor-level test (the opaque
+      ProvenanceReference constructor validates only §3.2's syntactic requirement)
+```
+
+### 6.2 Lifecycle-level
+
+```
+test: every object produced by a Transformation/Activity carries
+      ProvenanceReference(state=present) with a resolving provenance_id     [Domain Spec §13,
+                                                                             Law 20]
+test: state=absent is explicitly constructible via ProvenanceReference.absent(absence_reason)
+      wherever the Domain Spec permits absence; it MUST NOT be used for the output of
+      any Activity                                                          [API Contract §5.6,
+                                                                             Domain Spec §13]
+test: a derived object receives a NEW EntityID, never a revision of its
+      source's EntityID                                                    [Canonical IR §8,
+                                                                             Law 20]
+```
+
+### 6.3 Worked-example regression (from Canonical IR Spec §10)
+
+Using the C4–E4–G4 triad and its +P5 transposition as a fixed regression fixture:
+
+```
+test: N1, N2, N3 (hand-authored) carry provenance state=absent with a non-empty
+      absence_reason
+test: N4, N5, N6 (transposed) carry provenance state=present, provenance_id
+      resolving to a Derivation naming Transposition(+P5), and derived_from
+      pointing at N1/N2/N3 respectively
+test: N1–N3 are structurally unchanged after the transposition that produced
+      N4–N6 — no observable canonical field is modified (mutation check — Law 20).
+      This is a domain-level structural check, independent of serialization; a
+      separate serialization regression may assert byte identity once Deliverable O
+      defines a canonical byte representation
+```
+
+---
+
+## 7. Transformation Tests
+
+Grounded in TDD §146 / §200 and Law 20.
+
+### 7.1 Required validations per transformation (TDD §146, §200)
+
+```
+input compatibility
+parameter validity
+domain invariant preservation on the output
+instrument constraints where applicable
+output validity (output passes the same Invariant tests as any hand-constructed instance — §3)
+provenance completeness (§6)
+event mapping correctness (for transformations that map events to events)
+```
+
+### 7.2 Non-mutation test (Law 20 — the load-bearing one)
+
+```
+test: ∀ transformation T, input x: T(x) does not alter any observable field of x
+      (compare x before/after by full structural equality, not just EntityID)
+test: a transformation/derivation that produces a new entity MUST assign a new
+      EntityID; a revision operation MUST preserve the source EntityID and create a
+      new Version instead. The test determines which case applies from the
+      operation's declared semantics (Domain Spec §9 Lifecycle) — it does not assume
+      every transformation is derivation, nor that every transformation is revision
+```
+
+### 7.3 Golden tests (TDD §203)
+
+Critical/named transformations get version-controlled golden fixtures, provenance included in the expected output:
+
+```
+Input:      C E G
+Operation:  transpose +P5
+Expected:   output pitches G4/B4/D5
+            output identities distinct from N1–N3 (new EntityIDs — §7.2)
+            provenance state = present
+            provenance resolves to the expected derivation/activity, once
+              Deliverable K/M exist (resolution, not constructor, per §3.2/§6.1)
+            source-to-output derivation mapping correct (N1→N4, N2→N5, N3→N6)
+            input objects (N1–N3) structurally unchanged (§7.2 non-mutation test)
+```
+
+This fixture does not require a specific serialization/byte representation — that is Deliverable O's scope. Golden fixtures are regression tests, not correctness proofs — they catch unintended output drift; §7.1–7.2 establish correctness.
+
+### 7.4 Reproducibility (Law 21, stubbed for Phase-1 since no stochastic transform exists yet)
+
+```
+test: stochastic transformation accepts an explicit seed
+test: same seed + same input → byte-identical output across runs
+```
+
+---
+
+## 8. Relationship Validity Tests
+
+Grounded in TDD §79 and §197. `Relationship` (L6, full first-class edge) and `RelationshipReference` (L1, opaque pointer) get different test treatment — see §8.3.
+
+### 8.1 Structural invariants (TDD §197)
+
+```
+test: source endpoint exists (non-dangling)
+test: target endpoint exists (non-dangling)
+test: predicate exists (relationship has a declared predicate, not an untyped edge)
+test: predicate permits the source's actual type
+test: predicate permits the target's actual type
+test: required context exists where the predicate's contract demands one
+test: required provenance exists where the predicate's contract demands one
+```
+
+### 8.2 Temporal/versioning metadata (TDD §79)
+
+```
+test: a Relationship MAY carry valid_from / valid_until / context / framework / version
+test: a Relationship whose interpretation changes over time is represented as a NEW
+      Relationship version, not a mutation of the existing one — consistent with Law 6
+      (relationships are first-class) and Law 8 (interpretation is non-authoritative)
+test: two Relationships with the same source/target/predicate but different context or
+      framework are both retrievable and neither silently overwrites the other
+```
+
+### 8.3 Reference opacity test (`RelationshipReference`, API Contract C4)
+
+```
+test: no constructor or query on an L0–L4 object resolves a RelationshipReference into
+      its target Relationship — resolution is only exposed at L6+ (§6 of API Contract)
+test: RelationshipReference itself carries none of §8.1's fields (predicate/scope/
+      context/evidence) — those live only on the resolved Relationship
+test: attempting to supply a resolved Voice/Relationship/Provenance object where an
+      opaque reference (VoiceReference/RelationshipReference/ProvenanceReference) is
+      required MUST fail type/contract validation rather than being silently
+      auto-converted to a reference — no convenience adapter may bypass this
+```
+
+---
+
+## 9. Canonical Equality Tests
+
+The System Registry names five distinct equality concepts (`IdentityEquality`, `ValueEquality`, `StructuralEquality`, `SemanticEquality`, `CanonicalEquality`). Law 23 — *canonicalization is not equality* — is the reason these are tested separately rather than collapsed into one `==`.
+
+These are required equality surfaces: each of the five MUST be independently testable. The implication relationships between them (e.g. whether identity-equal implies value-equal) are asserted below only where a specific Domain Spec section already establishes them; elsewhere they are marked **PROVISIONAL** — this test specification does not invent an equality algebra the domain specs have not authorized.
+
+### 9.1 The five notions, each with its own required test
+
+```
+IdentityEquality (same entity/version):
+  test: two references to the same EntityID+Version compare equal regardless of
+        which in-memory instance holds them
+  test: two objects with the same field values but different EntityIDs are NOT
+        identity-equal (they are, at most, value-equal)
+
+ValueEquality (semantic value equality on Value objects):
+  test: Duration(3,4) == Duration(6,8) — reduced-value equality (Domain Spec §4)
+  test: two enharmonically-equivalent PitchSpellings are NOT value-equal
+        (this is the negative case — Domain Spec §11 explicitly requires
+        non-collapse here, unlike Duration's reduction)
+
+StructuralEquality (equivalent structure under declared rules):
+  test: two graphs with isomorphic node/edge shape but different EntityIDs compare
+        structurally equal under an explicit structural-equality rule set, and
+        NOT under IdentityEquality
+
+SemanticEquality (equivalent despite differing representation):
+  test: two representations under different Context/Tuning that denote the same
+        musical fact compare semantically equal, without asserting they are the
+        same object (Canonical IR §7 — interpretations coexist, none mutates fact)
+
+CanonicalEquality (same canonical normal form, versioned normalization policy):
+  test: two objects that canonicalize to the same normal form under normalization
+        policy version V compare canonical-equal under V
+  test: the same two objects MAY compare canonical-UNEQUAL under a different
+        normalization policy version V' — the policy version is part of the test
+        input, not incidental (Law 23: canonicalizing equal does not imply identical)
+  test: canonical-equal does NOT imply identity-equal (two distinct entities may
+        canonicalize identically without being the same entity — this is the
+        direct test of Law 23's statement)
+```
+
+### 9.2 Cross-notion regression
+
+```
+test: for a fixed pair of objects, assert ALL FIVE equality checks independently
+test: PROVISIONAL — where a specific implication between two of the five notions
+      is already established by an authoritative source (e.g. Domain Spec §4:
+      value-equal Durations need not be identity-equal), assert that implication
+      holds. Do not assert any implication not yet defined by such a source —
+      the algebra between the five notions as a whole remains open pending a
+      dedicated equality specification
+```
+
+This is the test category most directly answering "how do we know two things are the same," which is the sharpest correctness question a graph-of-references architecture (Canonical IR §4) can be asked.
+
+---
+
+## 10. Architecture (Boundary) Tests
+
+Per TDD §193, these are automated, not review-based — they run in CI against the actual module graph.
+
+```
+test: music-core (L1) does not import music-events (L3) or higher — enforces the
+      Dependency & Layer Specification directly, independent of how Canonical IR
+      Spec §2's open Registry-wording question is eventually resolved
+test: pitch module does not import harmony module
+test: time module does not import notation module
+test: domain modules do not import persistence modules
+test: domain modules do not import SQL/storage-specific code
+test: theory/framework modules cannot mutate canonical events (static check:
+      no theory-layer code path calls a canonical-object mutator — consistent
+      with C1/C2, since none exist, but this test also catches future violations)
+test: plugins cannot bypass capability boundaries
+test: no L1–L4 object's module imports the module of anything it only holds
+      by opaque reference (VoiceReference, RelationshipReference,
+      ProvenanceReference) — this is the reference-only dependency rule
+      (Domain Spec §2 rule 3) made into a CI check
+```
+
+This test enforces the Dependency & Layer Specification directly. It remains required regardless of how the Registry's Canonical IR row is eventually annotated — it does not decide, and is not decided by, Canonical IR Spec §2's open Registry-wording question; it exists independently of that open issue.
+
+---
+
+## 11. Categories Deferred to Later Deliverables
+
+Named in TDD §201 but with no Phase-1 object to bind to yet. Listed so the suite's completeness can be tracked against them, per the same pattern Canonical IR Spec §6 uses.
+
+| Category | Deferred to | Why not testable yet |
+|---|---|---|
+| Context | Deliverable H | Context composition (TDD §90–92) not yet specified |
+| Theory | Deliverable L | No Rule/Constraint objects exist in Phase-1 |
+| Analysis Regression | Deliverable Q/analysis phase | No analyzer interface has Phase-1 domain material (API Contract §2) |
+| Generation Validation | Generation phase | No Intent/Constraint objects specified |
+| Corpus Regression | Post-kernel | Requires a retained representative corpus, out of Phase-1 scope |
+| Performance | Ongoing, cross-cutting | No performance budget defined in any frozen spec yet |
+| Security / Fuzz | Deliverable T / I-O phase | Parser fuzzing, malformed serialization etc. require Deliverable O's wire format to exist first |
+| Migration | Deliverable P / first schema change | No second schema version exists yet to migrate from |
+
+---
+
+## 12. Coverage Status
+
+```
+Purpose / scope                       Done
+Test category taxonomy (§2)           Done
+Invariant tests (§3)                  Done — Phase-1 slice only
+Property-based tests (§4)             Done — Phase-1 slice; Transformation properties stubbed
+Serialization round-trip tests (§5)   Done
+Provenance tests (§6)                 Done
+Transformation tests (§7)             Done — Golden/Reproducibility partly stubbed pending Deliverable M
+Relationship validity tests (§8)      Done — Relationship (L6) contract itself still Deliverable G
+Canonical equality tests (§9)         Done
+Architecture tests (§10)              Done
+Deferred categories (§11)             Done — explicitly out of scope, not silently missing
+```
+
+Not frozen. Blocked on: Canonical IR Spec §12 open issues (esp. reference-type Registry sync — §0 above), Deliverable G (Relationship object itself), Deliverable K (Provenance record shape), Deliverable M (Transformation Architecture), Deliverable O (wire format, required for wire-format-specific Security/Fuzz coverage — object-level constructor/deserializer fuzzing at the abstract contract level does not require waiting for O).

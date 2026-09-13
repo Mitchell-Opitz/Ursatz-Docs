@@ -1,0 +1,436 @@
+# API / CONTRACT SPECIFICATION — Software Interaction Layer
+**Status: Draft v0.1 — Not Frozen**
+Source: Domain Ontology Specification v0.2 (Deliverable B), TDD v4 §124–125 (Serialization), §132 (Query Architecture), §138 (Transformation Architecture), §147 (Analysis Architecture), §153 (Generation Architecture), Dependency & Layer Specification v2
+Normative: Yes, for the objects covered (pending same blockers as Deliverable B)
+Scope: Phase-1 ontology objects only (TDD §233)
+
+---
+
+## 0. Status Statement
+
+This document answers *"how does software interact with the domain?"* for the ten Phase-1 objects plus the three proposed reference types, as defined in Domain Ontology Specification v0.2. It does not introduce new domain semantics — every contract here is derived from, and must remain consistent with, Deliverable B. Where Deliverable B is unresolved or unfrozen, the corresponding contract here is marked **BLOCKED** or **PROVISIONAL** rather than resolved by implication.
+
+This document inherits all of Deliverable B's open blockers:
+- Registry synchronization for `VoiceReference`, `RelationshipReference`, `ProvenanceReference` (Domain Spec §14, §16.5) — contracts for these three types are specified but **MUST NOT be implemented** until Registry sync occurs.
+- Entity/Occurrence/Event boundary unresolved (Domain Spec §16.1) — NoteEvent's contract is written against its *current* provisional Event-category treatment.
+- TimeSpan boundary vocabulary provisional (Domain Spec §16.3).
+- PitchIdentity `token` representation deferred to Deliverable D (Domain Spec §16.4) — PitchIdentity's contract is written to the extent the shape is fixed; representation-specific detail is out of scope here.
+
+Of the seven interaction categories named in scope, only three have concrete Phase-1 content. The other four (transformations beyond primitive arithmetic, services, analyzers, generators) have no Phase-1 domain material to bind to yet — see §3.
+
+---
+
+## 1. Purpose
+
+Deliverable B defines *what the domain objects are*. This document defines *how code is permitted to construct, inspect, and serialize them* — the contract surface a caller sees, independent of any particular language or framework. It does not define storage (Deliverable P), wire formats (Deliverable O), or query/pattern-matching semantics over collections of these objects (Deliverable Q) — it defines the object-level contract those later documents will build on.
+
+---
+
+## 2. Contract Category Definitions
+
+| Category | Meaning in this document | Phase-1 applicability |
+|---|---|---|
+| Constructors | Functions that produce a new instance from validated input | All 10 objects + 3 proposed references |
+| Queries | Read-only accessors and comparisons on an existing instance | All 10 objects + 3 proposed references |
+| Transformations | Operations that produce a new value from existing values | Primitive arithmetic only (§5.3); full Transformation Architecture (TDD §138–146, Deliverable M) is Phase 7, no Phase-1 object is its input |
+| Services | Repository/persistence-facing interfaces (TDD §129) | None — no Phase-1 object has a defined persistence contract yet; deferred to Deliverable P |
+| Analyzers | TDD §148 Analyzer Interface | None — Phase 8, operates on Structures/Relationships not yet specified |
+| Generators | TDD §160 Generator | None — Phase 12, operates on Intent/Constraint objects not yet specified |
+| Serialization interfaces | Round-trip contract per object (TDD §124–125) | All 10 objects + 3 proposed references |
+
+Services, Analyzers, and Generators are named for completeness per the request scope but are **not given contracts in this document** — there is no Phase-1 domain object for them to bind to. Each is a placeholder pointing at its owning future deliverable (§8).
+
+**Note on serialization contracts:** every `.serialize()` / `.deserialize()` contract in this document (§4–5) is an abstract, object-level round-trip contract only — it specifies which fields must be present, explicit, and round-trip-stable. It does not define byte layout, encoding, or wire format (JSON/protobuf/CBOR/XML/binary); that is Deliverable O's scope. A Deliverable O implementation MUST satisfy these object-level contracts but may choose any concrete wire representation that does so.
+
+---
+
+## 3. Cross-Cutting Contract Rules
+
+These apply to every object below unless a per-object section overrides them.
+
+**C1 — Immutability.** Every Value object's constructors produce a fully-formed, immutable instance. No setter/mutator exists on any Value type (EntityID, Duration, MusicalTime, TimeSpan, PitchIdentity, PitchSpelling, VoiceReference, RelationshipReference, ProvenanceReference).
+
+**C2 — Entity revision, not mutation.** NoteEvent and Voice (Entity/Container types) are never mutated in place. Where a "change" produces a new revision, that revision is governed by the canonical Entity/Version model (TDD §16, Deliverable A) — identity (EntityID) is stable across revisions, and each revision is a new construction, not an in-place field mutator. For NoteEvent specifically, Law 20 additionally requires the new construction to carry a ProvenanceReference linking it to its source (see C6). No contract in this document exposes an in-place field mutator on either type. This document does not introduce a Voice-specific revision mechanism beyond the canonical Entity/Version model — Voice's membership-revision mechanics remain deferred to Deliverable F (§5.2).
+
+**C3 — Fail-fast invariant enforcement.** Every constructor validates its Domain Spec invariants synchronously and rejects construction on violation (`InvariantViolation`, §7). No object may exist in a state that violates its own Deliverable B invariants — there is no "construct now, validate later" path.
+
+**C4 — Reference opacity.** Constructors and queries that touch `VoiceReference`, `RelationshipReference`, or `ProvenanceReference` operate only on the opaque `EntityID`-shaped value. No constructor or query defined on an L0–L4 object may resolve a reference into its target object (Domain Spec §2 rule 3). Resolution queries are specified separately in §6 as an abstract, higher-layer contract.
+
+**C5 — No floating point.** No constructor or query anywhere in this document accepts, returns, or compares a float/double for MusicalTime, Duration, or any rational quantity derived from them (Law 19).
+
+**C6 — Provenance state is mandatory, not optional-by-omission; `present` is required only for Activity-produced objects.** Any constructor for an object carrying a `ProvenanceReference` field (in Phase 1, this is NoteEvent) MUST require an explicit `state` (`present` or `absent`) — no constructor may expose a code path that silently omits the provenance field (Domain Spec §13). This is a general requirement and does not by itself mean every NoteEvent must carry `state=present`: ordinary hand-authored NoteEvents may legitimately construct with `state=absent`. Only NoteEvents produced by an Activity (e.g. a Transformation, Deliverable M) MUST construct with `state=present` and a resolving `provenance_id` — `state=absent` MUST NOT be used for Activity-produced output (Domain Spec §13).
+
+---
+
+## 4. Per-Object Contracts — Value Objects (L0/L2)
+
+### 4.1 EntityID
+```
+constructors:
+  EntityID.of(value: String) -> EntityID
+    raises InvariantViolation if value is empty
+    raises InvariantViolation if value encodes positional information (Law 16) — best-effort check only;
+      full enforcement is a caller discipline, not a runtime-checkable guarantee
+
+queries:
+  .value() -> String
+  .equals(other: EntityID) -> Boolean        -- value equality
+  .hashCode() -> Integer                     -- consistent with equals
+
+serialization:
+  .serialize() -> opaque scalar
+  EntityID.deserialize(scalar) -> EntityID   -- MUST NOT accept row-number/array-index-shaped input
+```
+
+### 4.2 Duration
+```
+constructors:
+  Duration.of(numerator: Integer, denominator: PositiveInteger) -> Duration
+    raises InvariantViolation if denominator <= 0
+    raises InvariantViolation if reduced value < 0 (Law 19)
+    postcondition: stored/serialized in reduced (lowest-terms) form
+
+queries:
+  .numerator() -> Integer
+  .denominator() -> PositiveInteger
+  .equals(other: Duration) -> Boolean        -- equality on reduced value (3/4 == 6/8)
+  .compareTo(other: Duration) -> Ordering
+
+transformations (primitive arithmetic — see §5.3):
+  .add(other: Duration) -> Duration
+  .subtract(other: Duration) -> Duration
+    raises InvariantViolation if result < 0
+
+serialization:
+  .serialize() -> {numerator: Integer, denominator: Integer}   -- exact integers, never float
+  Duration.deserialize(data) -> Duration
+```
+
+### 4.3 MusicalTime
+```
+constructors:
+  MusicalTime.of(numerator: Integer, denominator: PositiveInteger) -> MusicalTime
+    raises InvariantViolation if denominator <= 0
+
+queries:
+  .numerator() -> Integer
+  .denominator() -> PositiveInteger
+  .equals(other: MusicalTime) -> Boolean
+  .compareTo(other: MusicalTime) -> Ordering
+
+transformations (primitive arithmetic — see §5.3):
+  .add(d: Duration) -> MusicalTime
+  .subtract(other: MusicalTime) -> Duration
+    -- MUST NOT accept or return a Duration where a MusicalTime is expected, or vice versa,
+       even though the underlying rational representation coincides (Domain Spec §5)
+
+serialization:
+  .serialize() -> {numerator: Integer, denominator: Integer}
+  MusicalTime.deserialize(data) -> MusicalTime
+```
+
+### 4.4 TimeSpan
+```
+STATUS: boundary vocabulary PROVISIONAL (Domain Spec §16.3) — this contract uses the working
+four-value enum but MUST be revised without notice-of-breaking-change when Deliverable C lands.
+
+constructors:
+  TimeSpan.of(start: MusicalTime, end: MusicalTime, boundary: BoundaryKind) -> TimeSpan
+    raises InvariantViolation if end < start
+    raises InvariantViolation if boundary is not supplied (no implicit default — Domain Spec §6)
+  -- BoundaryKind = { closed, open, left_closed, right_closed }  (working vocabulary only)
+
+queries:
+  .start() -> MusicalTime
+  .end() -> MusicalTime
+  .boundary() -> BoundaryKind
+  .equals(other: TimeSpan) -> Boolean    -- start, end, AND boundary must all match
+
+serialization:
+  .serialize() -> {start, end, boundary}   -- boundary MUST be explicit; deserializer MUST reject
+                                              a payload missing boundary rather than default to closed
+  TimeSpan.deserialize(data) -> TimeSpan
+```
+
+### 4.5 PitchIdentity
+```
+STATUS: representation of `token` remains opaque/internal (unchanged). Equivalence relation
+RESOLVED (v0.3): strict token identity, permanent by design — see Domain Spec §7, §16.4.
+
+constructors:
+  PitchIdentity.of(token: opaque) -> PitchIdentity
+    raises InvariantViolation if token is EntityID-typed or otherwise carries entity-lifecycle
+      semantics (Domain Spec §7)
+    -- MUST NOT require tuning-system parameters at construction
+
+queries:
+  .token() -> opaque                      -- MUST NOT be exposed in a form callers could mistake
+                                              for a resolvable EntityID
+  .equals(other: PitchIdentity) -> Boolean  -- RESOLVED: strict token identity, permanent by design.
+                                                Theory-relative equivalence is PitchClass's
+                                                responsibility, not PitchIdentity's — see Domain Spec §16.4.
+
+serialization:
+  .serialize() -> opaque                  -- MUST NOT hard-code 12-TET/A440/MIDI assumptions
+  PitchIdentity.deserialize(data) -> PitchIdentity
+  -- token's concrete representation and equivalence relation are deferred to Deliverable D
+     (Domain Spec §16.4); this document establishes only that serialization is opaque and
+     non-EntityID-shaped, not any wire representation for `token`
+```
+
+### 4.6 PitchSpelling
+```
+constructors:
+  PitchSpelling.of(letter: Letter, accidental: Accidental, octave: Integer) -> PitchSpelling
+    raises InvariantViolation if letter not in declared alphabet
+    -- accidental representation deferred to Deliverable D; treated opaquely here
+
+queries:
+  .letter() -> Letter
+  .accidental() -> Accidental
+  .octave() -> Integer
+  .equals(other: PitchSpelling) -> Boolean   -- equality on (letter, accidental, octave) triple;
+                                                 C# and Db are NOT equal under this contract
+
+serialization:
+  .serialize() -> {letter, accidental, octave}   -- all three MUST be explicit; MUST NOT be
+                                                     reconstructed from PitchRealization on deserialize
+  PitchSpelling.deserialize(data) -> PitchSpelling
+```
+
+---
+
+## 5. Per-Object Contracts — Entity / Container / Reference Types (L1/L3/L4)
+
+### 5.1 NoteEvent (L3)
+```
+STATUS: category boundary (Entity vs Event vs Occurrence) UNRESOLVED (Domain Spec §9, §16.1).
+This contract is written against the current provisional Event-category treatment and MUST be
+revisited when Deliverable B resolves the boundary.
+
+constructors:
+  NoteEvent.create(
+    id: EntityID,
+    temporal_anchor: TemporalAnchor,
+    duration: Duration,
+    pitch: PitchIdentity,
+    optional_pitch_spelling: PitchSpelling?,
+    optional_voice: VoiceReference?,
+    provenance: ProvenanceReference
+  ) -> NoteEvent
+    raises InvariantViolation if duration < 0
+    raises InvariantViolation if provenance state is not explicitly present or absent (C6, §13 of
+      Domain Spec) — every NoteEvent carries an explicit ProvenanceReference state; only
+      Activity-produced NoteEvents (e.g. Transformation output, Deliverable M) additionally
+      require state=present with a resolving provenance_id. Hand-authored NoteEvents may
+      construct with state=absent.
+    raises InvariantViolation if optional_voice is anything other than a VoiceReference
+      (e.g. a resolved Voice object) — enforces music-events / music-containers non-dependency
+    -- id is caller-supplied (assigned once at entity creation per Domain Spec §3 lifecycle);
+       this contract does not allocate identity, it validates and stores it
+
+queries:
+  .id() -> EntityID
+  .temporalAnchor() -> TemporalAnchor
+  .duration() -> Duration
+  .pitch() -> PitchIdentity
+  .optionalPitchSpelling() -> PitchSpelling?
+  .optionalVoice() -> VoiceReference?        -- returns the opaque reference; MUST NOT resolve it
+  .provenance() -> ProvenanceReference
+  .equalsById(other: NoteEvent) -> Boolean   -- identity equality (primary, per Domain Spec §9)
+  .equalsByValue(other: NoteEvent) -> Boolean -- structural equality; does NOT imply same event
+
+-- no mutator contract exists; revision = construct a new NoteEvent with new id/provenance
+   chaining back to this one (Deliverable M concern, out of scope here)
+
+serialization:
+  .serialize() -> {id, temporal_anchor, duration, pitch, optional_pitch_spelling?,
+                    optional_voice?, provenance}
+    -- id MUST serialize as EntityID, never positional index
+    -- optional_voice, if present, MUST serialize as the opaque VoiceReference identifier only
+    -- provenance MUST serialize with explicit present/absent marker
+  NoteEvent.deserialize(data) -> NoteEvent
+    raises InvariantViolation under the same rules as .create()
+```
+
+### 5.2 Voice (L4)
+```
+constructors:
+  Voice.create(id: EntityID) -> Voice
+    -- membership is NOT a constructor argument; Domain Spec §10 explicitly excludes an
+       owned/mutable event list from Voice's required schema
+
+queries:
+  .id() -> EntityID
+  .equalsById(other: Voice) -> Boolean
+
+-- Membership query/mutation contract (which NoteEvents currently reference this Voice, and how
+   that reference set is revised) is NOT specified here. Domain Spec §10 states membership is
+   "represented via event references or containment relationships, not by embedding a full event
+   list as owned/mutable state" but does not fix the mechanism. This is deferred to the
+   Container and Structure Specification (Deliverable F) — no Voice membership contract should
+   be implemented against this document.
+
+serialization:
+  .serialize() -> {id}
+  Voice.deserialize(data) -> Voice
+```
+
+### 5.3 Primitive Value Arithmetic (cross-object transformation note)
+The `.add()` / `.subtract()` operations on Duration and MusicalTime (§4.2, §4.3) are the *only*
+Phase-1 "transformation" contracts. They are **not** instances of the TDD §138 Transformation
+Architecture (Transposition, Inversion, Retrograde, etc.) — those operate on NoteEvent-and-above
+objects, require provenance linkage (Law 20), and belong to Deliverable M (Phase 7). Primitive
+arithmetic on bare rationals requires no provenance because it produces a new Value, not a new
+identified/derived Entity.
+
+### 5.4 VoiceReference (L1, proposed) — **BLOCKED, not in Registry**
+```
+Per Domain Spec §14/§16.5: this type has no Registry row. The contract below is PROPOSED ONLY.
+It MUST NOT be implemented until Registry synchronization occurs.
+
+constructors:
+  VoiceReference.of(voice_id: EntityID) -> VoiceReference
+
+queries:
+  .voiceId() -> EntityID
+  .equals(other: VoiceReference) -> Boolean   -- value equality on referenced EntityID
+
+-- No resolve() method exists on this contract. Resolution to a Voice object is performed only
+   by code at L4 or above — see §6.
+
+serialization:
+  .serialize() -> opaque identifier only — no inlined Voice payload
+  VoiceReference.deserialize(data) -> VoiceReference
+```
+
+### 5.5 RelationshipReference (L1, proposed) — **BLOCKED, not in Registry**
+```
+Per Domain Spec §14/§16.5: PROPOSED ONLY. MUST NOT be implemented until Registry synchronization.
+
+constructors:
+  RelationshipReference.of(relationship_id: EntityID) -> RelationshipReference
+
+queries:
+  .relationshipId() -> EntityID
+  .equals(other: RelationshipReference) -> Boolean
+
+-- No resolve() method on this contract; resolution occurs only at L6+ (see §6).
+
+serialization:
+  .serialize() -> opaque identifier only
+  RelationshipReference.deserialize(data) -> RelationshipReference
+```
+
+### 5.6 ProvenanceReference (cross-cutting L0–L1, proposed) — **BLOCKED, not in Registry**
+```
+Per Domain Spec §14/§16.5: PROPOSED ONLY. MUST NOT be implemented until Registry synchronization.
+
+constructors:
+  ProvenanceReference.present(provenance_id: EntityID) -> ProvenanceReference
+    -- constructs state=present
+  ProvenanceReference.absent(absence_reason: String?) -> ProvenanceReference
+    -- constructs state=absent; MUST NOT be used for output of any Activity (§13 invariant)
+
+queries:
+  .state() -> { present, absent }        -- never "omitted" — omission is not constructible
+  .provenanceId() -> EntityID            -- only meaningful when state=present; raises if state=absent
+  .absenceReason() -> String?            -- only meaningful when state=absent
+  .equals(other: ProvenanceReference) -> Boolean
+    -- equality on (state, provenance_id) only; absence_reason excluded (Domain Spec §13, flagged
+       as revisable in §16.6)
+
+-- No resolve() method on this contract; resolution to a Provenance/Activity/Agent/Derivation
+   chain occurs at L1+ (see §6), and only when state=present.
+
+serialization:
+  .serialize() -> {state, provenance_id?, absence_reason?}
+    -- state MUST always serialize explicitly; a serializer MUST NOT omit this field
+    -- provenance_id MUST NOT be serialized when state=absent
+  ProvenanceReference.deserialize(data) -> ProvenanceReference
+    raises InvariantViolation if state is missing from the payload (never defaults to absent)
+```
+
+---
+
+## 6. Resolution Query Contract (abstract, out of Phase-1 scope)
+
+Reference types (§5.4–5.6) deliberately expose no `resolve()` method themselves — per the
+reference-only dependency rule (Domain Spec §2 rule 3), resolution is performed by code *above*
+the target's layer, not by the reference type's own module. This document fixes the shape such
+resolution queries will eventually take, without specifying them, since their target objects
+(Voice's membership resolution store, Relationship, Provenance/Activity/Agent/Derivation) are not
+yet fully contracted:
+
+```
+-- illustrative only, not a Phase-1 deliverable:
+VoiceResolver.resolve(ref: VoiceReference) -> Voice | DanglingReference          -- L4+
+RelationshipResolver.resolve(ref: RelationshipReference) -> Relationship | DanglingReference  -- L6+
+ProvenanceResolver.resolve(ref: ProvenanceReference) -> ProvenanceRecord | DanglingReference   -- L1+
+```
+
+A dangling reference on resolution is an invariant violation per Domain Spec §9/§13, not merely
+a null result — callers MUST be able to distinguish "resolved to nothing because absent" from
+"resolved to nothing because dangling." This document does not decide whether, or under what
+conditions, a reference to a tombstoned target counts as "dangling" versus resolvable — that
+policy belongs to the eventual lifecycle/resolution specification (Deliverable G for Relationship,
+Deliverable K for Provenance, and the Container/Structure Specification for Voice) and is left
+open here.
+
+---
+
+## 7. Error Contract (shared)
+
+```
+InvariantViolation
+  -- raised synchronously by any constructor/deserializer whose input would produce an object
+     violating a Domain Spec invariant. Construction MUST NOT succeed and then be flagged invalid
+     later (C3).
+
+DanglingReference
+  -- raised by a resolution query (§6) when a reference's target cannot be resolved (e.g. does
+     not exist). Whether, or under what conditions, a tombstoned target is resolvable is not
+     decided by this document — see §6. Not raised by any contract in §4–5, since none of those
+     perform resolution.
+```
+
+No other exception/error type is contracted at Phase 1. Object-specific error subtypes (e.g.
+distinguishing "negative duration" from "bad denominator") are an implementation detail this
+document does not mandate.
+
+---
+
+## 8. Out of Scope at Phase 1 (placeholders)
+
+```
+Services   — repository/persistence interfaces (TDD §129). Owning deliverable: P.
+Analyzers  — TDD §148 Analyzer Interface. Owning deliverable: future deliverable not yet assigned; Phase 8 (TDD §242).
+Generators — TDD §160 Generator. Owning deliverable: future deliverable not yet assigned; Phase 12 (TDD §246).
+Query Architecture (collection-level pattern matching/search, TDD §132–137) — owning deliverable: Q.
+```
+None of the ten Phase-1 objects are inputs to a Service, Analyzer, or Generator contract as
+currently specified. Listing them here records the mapping so this document isn't silently read
+as having decided they don't exist — they are simply not yet reachable from Phase-1 material.
+
+---
+
+## 9. Coverage Status
+
+```
+EntityID                Done
+Duration                Done
+MusicalTime              Done
+TimeSpan                 Done (boundary vocabulary provisional, inherits Domain Spec §16.3)
+PitchIdentity             Done (equivalence relation placeholder, inherits Domain Spec §16.4)
+PitchSpelling             Done
+NoteEvent                 Done (category boundary unresolved, inherits Domain Spec §16.1)
+Voice                     Done (membership contract explicitly deferred to Deliverable F)
+VoiceReference            Proposed contract only — BLOCKED on Registry sync
+RelationshipReference     Proposed contract only — BLOCKED on Registry sync
+ProvenanceReference       Proposed contract only — BLOCKED on Registry sync
+Services / Analyzers / Generators   Out of scope — placeholders only (§8)
+```
+
+This document is **not frozen**. It is blocked by the same items blocking Domain Ontology
+Specification v0.2 (§0), plus its own dependency: any change to Deliverable B's object shapes
+invalidates the corresponding contract section here and requires a re-sync pass.

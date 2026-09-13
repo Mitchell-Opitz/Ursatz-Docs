@@ -1,0 +1,295 @@
+L0 (music-identity) — reviewed against the requirements list, already merged to main, no changes needed
+
+This module was already implemented and merged (PR #2) prior to this
+review. Checked it against every requirement in the list:
+
+1. EntityID — opaque immutable string id, value equality. Invariant
+   tests (reject null/empty) and serialization round-trip test both
+   present and passing.
+
+2. Version — wraps EntityID + revision. Value equality on
+   (entity_id, revision). Invariant tests (reject null entity_id,
+   reject non-positive revision) present. Round-trip test flagged as
+   "currently MISSING" in the requirements doc — checked the actual
+   file: it already exists (test_version.c, test_round_trip) and
+   passes. No fix needed.
+
+3. VersionModel — stateless revision/derivation validation
+   (version_model_is_valid_revision, version_model_is_valid_derivation).
+   Full invariant coverage already present, including null-argument
+   cases.
+
+4. SchemaVersion — positive integer, immutable, value equality.
+   Invariant test (reject non-positive) and round-trip test both
+   present. Migration-category tests correctly deferred (no second
+   schema version exists yet) — matches spec.
+
+Cross-cutting: architecture test confirming music-identity imports
+nothing outside identity/ is present and passing.
+
+Known gaps called out in the requirements doc — checked each against
+the actual code, none were found to be real:
+- "No round-trip test exists yet for Version" — false, it exists.
+- "version_create() does not free partially allocated memory on every
+  failure path" — checked: on partial-allocation failure it correctly
+  frees what it already allocated before returning. Confirmed with a
+  full valgrind run (--leak-check=full) across all four identity test
+  binaries: zero leaks, zero errors.
+- "confirm no constructor allows partial/invalid object construction"
+  — confirmed. Every constructor validates before allocating and
+  leaves the output pointer untouched on any failure path (fail-fast,
+  API Contract C3 satisfied).
+
+Net result: no code changes were needed. L0 already meets every
+requirement in the list as merged.
+
+L1 (music-core) — completed, pushed to feat/core, verified, ready to merge
+
+7 commits, all tests passing (12/12), clean build with no warnings:
+
+1. Scaffold music-core module + directory-driven architecture gate test
+   confirming music-core depends on music-identity (L0) only
+2. Entity base type — id, type, schema_version, metadata fields;
+   identity equality (same EntityID + SchemaVersion = same entity,
+   regardless of instance)
+3. Value base type — immutable content, no identity field, no mutators;
+   value equality (equal content = equal, regardless of instance)
+4. Occurrence base type — references its target concept by EntityID
+   only, does not duplicate target data
+5. Equality concepts — StructuralEquality and CanonicalEquality
+   implemented; SemanticEquality defined as a contract/interface only
+   (full version needs Context, an L6 concept — correctly deferred)
+6. VoiceReference, RelationshipReference, ProvenanceReference — opaque
+   EntityID-shaped reference types, no embedded higher-layer semantics.
+   ProvenanceReference implements the three-state presence model
+   (present / explicitly absent / no silent omission)
+7. docs/ARCHITECTURE.md updated with the new module and its open
+   caveats
+
+Open items intentionally left unresolved, not silently decided:
+- Entity/Occurrence/Event category boundary is contested upstream
+  (Domain Spec, System Registry) — implementation does not assume an
+  answer
+- Entity's provenance_reference field is not wired up yet.
+  ProvenanceReference exists as a type, but embedding it into Entity is
+  separate follow-up work, not part of this pass
+
+Registry note: VoiceReference, RelationshipReference, and
+ProvenanceReference were approved for implementation as "proposed"
+types ahead of a formal System Registry update. The Registry document
+itself was not amended as part of this work — it lives outside this
+repository and wasn't available to edit directly. If the Registry needs
+the three new rows added (and the NoteEvent dependency-column update)
+formally recorded, that's still outstanding on the documentation side.
+
+Verification performed: rebuilt and re-ran the full test suite directly
+from origin/feat/core (not just the working copy) — 12/12 tests pass,
+zero build warnings, file contents on the branch match what was
+authored.
+
+L2 (music-time, music-pitch) — completed, pushed via feat/time-pitch, merged to main (PR #4); TemporalAnchor addition completed, pushed via feat/temporal-anchor, merged to main (PR #5) — verified, ready to review
+
+10 commits total across both merges, all tests passing (21/21 total; 9 new in this pass — 8 from time/pitch + 1 TemporalAnchor), clean build with no warnings:
+
+1. Scaffold music-time architecture gate test confirming music-time depends on music-identity (L0) and music-core (L1) only
+2. Duration value type — numerator/denominator fields, exact rational, immutable, construct-time reduction to lowest terms, value equality on reduced value, invariant denominator > 0
+3. Duration arithmetic and invariant tests — add/subtract, property-based (never negative, Duration(a,b) == Duration(ka,kb)), invariant (denominator > 0 rejected otherwise)
+4. MusicalTime value type — structurally identical to Duration but kept as a distinct, non-interchangeable type (position vs. magnitude); no lower bound enforced (pickup measures legal)
+5. MusicalTime arithmetic and invariant tests — add(Duration) -> MusicalTime, subtract(MusicalTime) -> Duration; type-level rejection of Duration/MusicalTime substitution; property-based (arithmetic preserves exactness), golden (offset serialization round-trip)
+6. TimeSpan value type — start/end (MusicalTime) + explicit boundary enum (closed/open/left_closed/right_closed, marked provisional per Domain Spec §16.3); invariant end >= start; boundary required at construction and on deserialize, no implicit default; value equality includes boundary
+7. TimeInstant value type — zero-duration point wrapping MusicalTime, parallel invariant tests to MusicalTime
+8. Scaffold music-pitch architecture gate test confirming music-pitch depends on music-identity (L0) and music-core (L1) only, and does not cross-import with music-time
+9. PitchIdentity value type — opaque token, placeholder value equality; rejects EntityID-typed token; construction requires no tuning-system parameters
+10. PitchSpelling value type — letter/accidental/octave fields, value equality on the triple (enharmonic spellings NOT value-equal by design); property-based (round-trips without enharmonic collapse), invariant (letter valid under declared alphabet)
+11. docs/ARCHITECTURE.md updated with both new modules and open L2 caveats (feat/time-pitch, PR #4)
+12. TemporalAnchor value type — wraps MusicalTime, situates a higher-layer object at a position without that object embedding position semantics itself; no lower bound enforced, matching MusicalTime; added as an L2 prerequisite for L3 music-events' Event type
+13. docs/ARCHITECTURE.md updated with TemporalAnchor in the music-time notes section (feat/temporal-anchor, PR #5)
+
+Open items intentionally left unresolved, not silently decided:
+- TimeSpan's boundary vocabulary (closed/open/left_closed/right_closed) is explicitly provisional per Domain Spec §16.3 — implemented as-is, not hardened; expect revision without treating that as a breaking-change violation
+- PitchIdentity's true equivalence relation is deferred to Deliverable D (not yet available) — only the placeholder token-equality shape is implemented; full property-based suite is TBD pending that spec
+- PitchSpelling's accidental representation is modeled opaquely, exact model also deferred to Deliverable D
+- PitchClass, PitchRealization, TuningSystem, WrittenPitch, SoundingPitch, Meter, MeterMap, Tempo, TempoMap remain out of scope (Phase 2/3 per Registry)
+- TemporalAnchor's wrapped MusicalTime carries no additional bound beyond MusicalTime's own (still no lower bound) — no new semantics introduced
+
+Registry note: none — music-time and music-pitch were already Phase 1 rows in the System Registry ("TEMPORAL ARCHITECTURE" / "PITCH ARCHITECTURE"); TemporalAnchor is not itself a Registry row, it exists to satisfy L3 Event's stated L2 dependency (TimeAnchor/TemporalAnchor) ahead of the music-events pass. No new registry rows were introduced this pass.
+
+Verification performed: rebuilt and re-ran the full test suite directly from origin/main post each merge — 21/21 tests pass (12 from L1 + 8 from time/pitch + 1 from TemporalAnchor), zero build warnings, file contents match what was authored in both passes.
+
+L3 (music-events) — completed, pushed to feat/events, merged to main (pending PR), verified, ready to merge
+
+8 commits, all tests passing (27/27), clean build with no warnings:
+
+1. Scaffold music-events module + directory-driven architecture gate test confirming music-events depends on music-identity (L0), music-core (L1), music-time, and music-pitch (L2) only, and explicitly does not depend on music-containers (L4)
+2. Event base type — composes Occurrence (L1) with TemporalAnchor (L2) without collapsing into either; structural/invariant test confirms both remain independently accessible
+3. NoteEvent entity — id, temporal_anchor, duration, pitch, optional pitch spelling, optional voice reference, provenance; equalsById (identity equality, primary) and equalsByValue (structural equality, independent of id) kept as two separate functions, never collapsed into one; no mutator
+4. RestEvent — temporal_anchor + duration, explicit symbolic absence (not a claim of universal physical silence)
+5. ControlEvent — temporal_anchor + generic/opaque payload; no protocol-specific semantics at this layer (deferred to adapter code, L9+)
+6. Tie relationship type — connects two NoteEvents by EntityID reference only, never by embedded NoteEvent instances; constructing a Tie does not alter either referenced NoteEvent's own fields
+7. docs/ARCHITECTURE.md updated with the new module and its open L3 caveats
+8. Fix — corrected a pushed filename typo (reset_event.c → rest_event.c) that broke the CMake configure step; caught during review verification, re-verified clean after the push
+
+Open items intentionally left unresolved, not silently decided:
+- STATUS FLAG carried forward: NoteEvent's category (Entity vs Event vs pure Occurrence) is UNRESOLVED upstream (Domain Spec §9, §16.1) — implemented under the current provisional "Event" treatment only; NoteEvent is deliberately not built on core/entity.h's Entity type, since doing so would itself assume a resolution
+- NoteEvent's provenance state=present enforcement for Activity-produced events is not implemented — no Activity/Transformation exists yet at this layer to produce that case
+- Slur, Articulation, Dynamics (Registry Phase 2) and Instrument, InstrumentCapability (Registry Phase "1+", provisional placement, property list explicitly flagged illustrative/non-normative) are out of scope this pass
+- Voice itself (L4, music-containers), Interval, Sonority, PerformanceEvent remain out of scope — only VoiceReference (L1) is used here
+
+Registry note: none — music-events was already a Phase 1 row in the System Registry ("EVENTS"). No new registry rows were introduced this pass; NoteEvent's category-boundary status flag remains open on the Registry/Domain Spec side, unchanged by this implementation.
+
+Verification performed: rebuilt and re-ran the full test suite directly from origin/feat/events (not just the working copy), both before and after the filename fix — 27/27 tests pass, zero build warnings, file contents on the branch match what was authored (only cosmetic trailing-newline differences).
+
+L4 (music-containers) — completed, pushed to feat/containers, ready to merge
+
+4 commits, all tests passing (30/30), clean build with no warnings:
+
+1. Scaffold music-containers module + directory-driven architecture gate test confirming music-containers depends on music-identity (L0), music-core (L1), music-time, music-pitch (L2), and music-events (L3) only, and explicitly does not depend on anything L5+
+2. Container base type — pure grouping category with no fields, no create/destroy, no membership accessors; makes no assumption about what a concrete container groups or how membership is represented; invariant test confirms the header compiles standalone with no such assumptions baked in
+3. Voice (Container) — id only, per Domain Spec §10; no owned/mutable notes or events list added, since membership is deferred to a later Container/Structure spec that doesn't exist yet; identity equality by EntityID only (Voice has no separate schema/version field to compare, unlike Entity); no mutator — a revision is a new Voice construction
+4. docs/ARCHITECTURE.md updated with the new module and its open L4 caveats
+
+Open items intentionally left unresolved, not silently decided:
+- Voice's membership mechanism (which events/notes belong to a voice) is deferred to a later Container/Structure spec, not yet available — nothing here anticipates its shape
+- Layer, Staff, Part, Measure (Registry Phase 2) and Phrase (container use), Section, Movement, Work, Edition, Arrangement, Revision, SourceVariant (Registry Phase 5, several marked "Reference Concept"/non-normative) are out of scope this pass
+- Resolution logic that takes a VoiceReference and looks up the actual Voice (repository/registry pattern) is an application/query-layer concern (L9), not this module's job
+- Voice↔Instrument, Voice↔Staff, Voice↔Part relationships are deferred to music-relationship (L6) or later container work — not implied or hard-coded here
+- Voice MUST NOT be assumed to map 1:1 to an Instrument, Staff, or Part; a Voice MAY appear on multiple staves, a Staff MAY contain multiple voices (semantic notes only — Staff doesn't exist yet this pass, so nothing enforces this in code)
+
+Registry note: this is the layer where VoiceReference (built at L1 back in the music-core pass) gets a real resolution target. No code change was needed to VoiceReference itself; nothing in music-containers redefines or duplicates what it already does.
+
+Verification performed: rebuilt and re-ran the full test suite directly from origin/feat/containers via an isolated worktree (not just the working copy) — 30/30 tests pass, zero build warnings, file contents on the branch confirmed to match what was authored.
+
+L5 (music-structure) — completed, pushed to feat/structure, ready to merge
+
+6 commits, all tests passing (35/35), clean build with no warnings (after one correction — see below):
+
+1. Scaffold music-structure module + directory-driven architecture gate test confirming music-structure depends on music-identity (L0), music-core (L1), music-time, music-pitch (L2), music-events (L3), and music-containers (L4) only, and explicitly does not depend on anything L6+
+2. Structure base type — composes an Entity (L1) with non-duplicating event refs (EntityID pointers only, never resolved NoteEvent objects); unlike Container (L4), this is a real constructible base type, not a pure marker, because the Registry requires an invariant test at this layer confirming referenced events are never duplicated; no hierarchy assumed among Structure subtypes (TDD §57) — nothing here hard-codes Motif → Phrase → Theme → Section
+3. Motif (Structure) — event refs (the pattern's defining events, referenced not duplicated); flattens to its own fields (bare EntityID id + event-id array) rather than embedding Structure's wrapper struct, the same approach NoteEvent takes relative to Event and Voice takes relative to Container elsewhere in this codebase; identity equality by EntityID only, stable independent of any occurrence
+4. MotifOccurrence — built on Occurrence (L1), the one type in this module that does embed its L1 base type directly (own id + target Motif id via Occurrence, plus its own region/event refs), the same way Event composes Occurrence with a TemporalAnchor; a single Motif may have many distinct MotifOccurrences, each a distinct instance sharing the same target Motif identity
+5. Cadence (Structure) — Phase-5 structural shell only (System Registry: "Yes, explicit Phase 5/8 deliverable"): id, event refs, and an opaque/nullable harmonic-context field (a Value, same opaque-token treatment PitchIdentity and ControlEvent's payload use); no cadence-detection logic — that's Phase 8 (music-analysis) work, out of scope here; tests are structural/invariant only, no AnalysisRegression-tagged tests
+6. docs/ARCHITECTURE.md updated with the new module and its open L5 caveats
+
+One correction after initial push: tests/structure/test_structure.c called schema_version_create(1, 0, 0, &schema_version) — wrong signature (SchemaVersion is a single unsigned long value, not major/minor/patch). Caught on verification, fixed and pushed as a follow-up commit; branch now builds clean.
+
+Open items intentionally left unresolved, not silently decided:
+- No hierarchy is assumed among Structure subtypes (TDD §57) — a Structure graph is not required to follow Motif → Phrase → Theme → Section as a universal shape
+- Cadence's harmonic-context resolution is an L6+/L7 concern, not implemented here — construction never requires that machinery
+- SimilarityResult, Motif Detection, Phrase Segmentation, Cadence Detection are Phase 8 (music-analysis) procedures that PRODUCE Motif/MotifOccurrence/Cadence instances — out of scope for this layer, which only defines the data shapes
+- Figure, Theme/ThemeOccurrence, PhraseOccurrence (Registry Normative = No, example/naming-pattern only) are not implemented this pass
+- Section, Movement, Work remain L4 container concerns, deferred there too, not L5 structures — not implied or hard-coded here
+
+Verification performed: rebuilt and re-ran the full test suite directly from origin/feat/structure via an isolated worktree (not just the working copy) — first pass caught the schema_version_create bug (build failed before reaching test_cadence/architecture_structure); after the fix was pushed, re-verified from a fresh worktree — 35/35 tests pass, zero build warnings, architecture-gate test confirmed to actually scan files (8 checked, 0 violations) via ctest's working directory, not just return 0 by finding nothing to check.
+
+L6 (music-context, music-semantics, music-relationship, music-interpretation) — completed, pushed to feat/context, ready to merge
+
+17 commits, all tests passing (51/51), clean build with no warnings (after one correction — see below):
+
+1. Scaffold music-context + directory-driven architecture gate test confirming music-context depends on music-identity (L0) through music-structure (L5) only
+2. Context (Category/base type) — composable/nested (optional parent reference, not owned — caller manages parent lifetime), plus a minimal identifying label; structural test confirms nested composability, context test confirms distinct Contexts stay distinguishable
+3. Scaffold music-semantics + architecture gate test (same L0-L5 allowlist, no sideways L6 imports)
+4. Interval (Value) — directed/undirected/chromatic distance between a PitchIdentity pair; since PitchClass doesn't exist yet and PitchIdentity is an opaque token with no numeric semantics, this type computes nothing itself — each dimension is caller-supplied and independently optional, never defaulted to zero when unknown; property-based test covers all combinations of known/unknown dimensions plus the directed/undirected consistency invariant
+5. Sonority (Value) — selected collection of simultaneous pitch-bearing events; selection semantics (time window, voice set, symbolic-vs-sounding domain) are explicit fields, not implicit; carries no chord-identification logic — a Sonority is not automatically a Chord; golden test confirms known event/voice/window/domain inputs produce the exact expected shape
+6. RhythmicPattern (Value/Structural) — an ordered Duration sequence; takes no dependency on either pitch header, so a rhythmic query never needs pitch information; unit tests cover construction and sequence access
+7. Scaffold music-relationship + architecture gate test
+8. Relationship (Category/base type) — id, source/target (opaque EntityID references, never embedded), predicate (open-vocabulary name string), scope/qualifiers/uncertainty (opaque placeholder Values pending later-built types), context/evidence (opaque EntityID references — avoids a sideways L6 import on music-context), provenance (required ProvenanceReference); relationship-category test confirms source/target come back as exact references, never resolved objects
+9. PredicateDefinition (Entity) — name, inverse, symmetric, transitive, allowed_source/target_types, contextual; the predicate vocabulary is explicitly extensible per the Registry, so this is an open/registrable type, not a closed enum; structural test confirms a Relationship correlates to a PredicateDefinition by name string
+10. Scaffold music-interpretation + architecture gate test
+11. Uncertainty (Concept/Value) — tagged/variant type covering unknown, scalar confidence, and candidate set (the remaining TDD-named shapes are documented as future variants, not forced into these three); confidence/weights are exact rational fractions, never float/double; invariant test confirms the three kinds never collapse into each other
+12. Evidence (Category/base type) — strength, relevance, reliability kept as three independent rational-fraction fields (never collapsed to one "evidence score"), plus independence, method, source; context/theory-tagged test confirms the three dimensions vary independently
+13. Assertion (Category/base type) — subject (opaque reference), claim (opaque Value), agent (opaque identifier string, pending ProvenanceAgent); structural test confirms the subject reference is never embedded/resolved
+14. Observation (Category/base type) — subject, property, value_or_candidates, method, source, a required Uncertainty, an opaque placeholder timestamp (real-world wall-clock time — TimeInstant is the wrong domain, it wraps MusicalTime), provenance; context test confirms it carries no interpretive-claim field, only raw detected values
+15. Hypothesis (Category/base type) — observation refs, evidence refs, and a real candidate array (not a single value plus a confidence score); context test confirms two independent Hypotheses can reference the same Observation without conflict
+16. Interpretation (Category/base type) — target (opaque reference, never mutated — Law 8), claim, optional context/evidence references, required Uncertainty, author/method (opaque placeholders), status enum (TDD §88 vocabulary), provenance; deliberately has NO framework field at all (see contradiction flag below); context/theory-tagged test confirms non-mutation of target and coexistence of multiple competing Interpretations on the same target
+17. docs/ARCHITECTURE.md updated with the L6 layer entry, module table, and a full L6 notes section covering the contradiction flag, the opaque-placeholder pattern, and every open item below
+
+One correction after initial push: tests/semantics/test_sonority.c leaked its MusicalTime start/end on every call — time_span_create copies its start/end arguments rather than taking ownership (unlike most constructors in this codebase), so the caller must destroy the originals itself, same as the existing test_time_span.c pattern. Caught under AddressSanitizer, not the plain build (plain ctest was already 51/51 green — this was a leak, not a logic failure). Fixed and pushed as a follow-up commit; re-verified clean under ASan/UBSan afterward.
+
+IMPORTANT CONTRADICTION FLAGGED, not silently resolved (same pattern as the Canonical IR issue at L1): the Registry's "Depends On" column lists "Framework" (L7, music-theory) for Interpretation, ScaleDegree, Chord, and Key. A literal import would violate the layer rule the same way it did at L1. ScaleDegree/Chord/Key sit at Registry Phase 3/8 or 8, not 6, and are deferred whole, so this pass only had to resolve it for Interpretation: it has no resolved framework field at all — omitted entirely, not even an opaque placeholder — flagged as a follow-up once music-theory exists.
+
+Open items intentionally left unresolved, not silently decided:
+- No sideways L6 imports — context, semantics, relationship, and interpretation never import each other; every cross-module reference is an opaque EntityID
+- Relationship's uncertainty field predates Uncertainty's construction (commit 8 vs. commit 11) and stays an opaque placeholder Value rather than being retrofitted
+- Assertion's and Interpretation's author/agent fields, and Observation's timestamp, are opaque placeholders pending ProvenanceAgent and a wall-clock timestamp type, neither of which exist yet
+- Scale, ScaleDegree, Contour, Chord, Key, Annotation, ScholarlyAnnotation, PitchClass, PitchRealization, TuningSystem are deferred whole (wrong phase and/or non-normative and/or blocked on Framework)
+- Any actual harmonic/theoretical analysis (chord ID, key estimation, Roman numeral analysis, cadence detection) is Phase 8 (music-analysis), out of scope here
+- Full ProvenanceAgent/ProvenanceActivity/Derivation objects are Phase 6 cross-cutting Provenance module work, separate from this pass
+
+Verification performed: rebuilt and re-ran the full suite directly from origin/feat/context via an isolated worktree (not just the working copy) — first pass under ASan/UBSan caught the test_sonority leak (plain ctest was already green, so this wasn't visible without a sanitizer build); after the fix was pushed, re-verified from a fresh worktree under both a plain build and an ASan/UBSan build — 51/51 tests pass plain, and test_sonority now passes clean under sanitizers with zero new leaks/errors. The 4 sanitizer failures that remain (note_event, rest_event, control_event, tie) were independently confirmed pre-existing on main (built main under the same ASan/UBSan config — identical 4 failures, unrelated to this branch).
+
+L7 (music-theory, music-rules) — completed, pushed to feat/theory-rules, ready to merge
+
+11 commits, all tests passing (61/61), clean build with no warnings (after one correction — see below):
+
+1. Scaffold music-theory + music-rules + directory-driven architecture gate tests confirming each depends on music-identity (L0) through music-interpretation (L6) only, with no music-corpus (L9) or music-analysis/music-generation/music-transform (L8) import possible
+2. Framework (Category/base type) — interpretive system; holds only identity and a name, no forward reference to any of its own siblings (Rule/Constraint/Preference/Heuristic/Tendency/StatisticalModel/StyleModel) and no back-reference into music-interpretation — it is referenced BY those types, never the reverse; construction test plus a structural note confirming the no-forward-reference invariant
+3. Rule (Category/base type) — id, a direct unowned Framework reference (same reference-only pattern Context uses for its own parent field), and an opaque placeholder scope; construction test confirms the exact Framework instance round-trips
+4. Constraint (Category/base type) — framework, scope, and a tagged ConstraintType (hard/soft/weighted/conditional/contextual per TDD §96, not a boolean is_hard flag); weighted constraints carry an exact rational weight fraction; a machine-evaluable constraint_evaluate stub validates arguments and reports "not implemented" rather than performing real evaluation (that's music-generation, L8, work); construction/type-tagging tests plus an out-of-range weight rejection test
+5. Preference (Category/base type) — id, framework; preference_rank is structurally distinct from constraint_evaluate — its result type has no PASS/FAIL/invalid variant, only "computed" or "not implemented," so there is no code path anywhere in this type through which a candidate could be rejected/invalidated; test confirms this directly
+6. Heuristic (Category/base type) — id, label only; exposes no evaluate/pass-fail API at all, so it cannot be treated as authoritative (TDD §98) because there's nothing on the type that could be evaluated true/false in the first place
+7. Tendency (Category/base type) — id, label, an exact rational frequency fraction, and an opaque already-computed observed-data Value (never a music-corpus import); TendencyResult is a disjoint enum from RuleResult/ConstraintResult/ConstraintEvalResult — no function anywhere converts a Tendency into a Rule/Constraint verdict, and none of rule.h/constraint.h accept a Tendency; test confirms frequency-range validation and the disjoint-enum shape
+8. StatisticalModel (Category/base type) — input_features, output, and calibration as opaque Values, an exact rational probability fraction, training_corpus as a plain label string (never a music-corpus reference), model_version; no promotion path anywhere from a StatisticalModel's output to a Rule; construction/shape tests only, no corpus regression tests (no Corpus module exists yet to regress against)
+9. StyleModel (Category/base type) — style_name, an opaque style_features Value, training_corpus (plain label string), model_version; same opaque-input treatment as Tendency/StatisticalModel; construction/shape tests only, no fitting/comparison logic in this pass
+10. docs/ARCHITECTURE.md updated with the L7 layer entry, module table, and a full L7 notes section covering the OPEN ISSUE, the Interpretation<->Framework resolution from this side, and every deferred item below
+11. Fix: tests/rules/test_architecture_rules.c's allowlist was scaffolded (commit 1) before Rule/Constraint/Preference existed and never got theory/ added once they started holding direct Framework references (commit 3) — caught by ctest, not the plain build (build itself was clean; this was an architecture-gate test failure, not a compile error). Fixed and pushed as a follow-up commit; re-verified clean afterward.
+
+OPEN ISSUE FLAGGED, GUARDRAIL, NOT VIOLATED (Dependency Spec §7.2): the Registry lists Tendency, StatisticalModel, and StyleModel as depending on Corpus (L9, music-corpus) — an explicit, still-unresolved forward dependency the spec says MUST NOT be implemented until the Domain Ontology Specification and System Registry are updated. All three accept corpus-derived statistics only as opaque, already-computed input Values; none of them, nor any other file under src/theory/ or src/rules/, includes a music-corpus header. Enforced by the same directory-allowlist architecture-gate pattern used at every other layer.
+
+This pass also resolves the other side of L6's Interpretation<->Framework contradiction flag (Dependency Spec §7.1): Framework holds no reference back into music-interpretation and no forward reference to any of its own L7 siblings — it's the thing an L6+ consumer resolves a reference against, never the thing that reaches back out. Interpretation itself still has no framework field; that stays unresolved from the L6 side, unchanged in this pass.
+
+Open items intentionally left unresolved, not silently decided:
+- RuleEvaluation — Rule depends on it, but no distinct Registry row/shape was found for it in this pass; flagged for project-owner confirmation before building rather than inventing its field shape from TDD §102 alone
+- Procedure — despite appearing near Phase 9 material in the TDD, its Registry module is music-analysis/music-generation (L8), not this pass
+- Species-counterpoint frameworks (TDD Phase 10) and common-practice harmony (TDD Phase 11) are explicitly deferred as independent extension modules built on top of Framework/Rule/Constraint after this pass — no kernel changes were made "for convenience" here
+- Any actual constraint-solving, generation, or analysis pipeline that USES Rule/Constraint/Preference/Heuristic is Phase 8+ (music-analysis/music-generation/music-transform, L8), out of scope here
+- Corpus ingestion/normalization/indexing itself is L9 (music-corpus), blocked from being imported here regardless of the above
+
+Verification performed: rebuilt and re-ran the full suite directly from origin/feat/theory-rules via an isolated worktree (not just the working copy) — first pass caught the architecture_rules allowlist gap (60/61, plain build was already clean, so this wasn't a compile issue, just the test doing its job); after the fix was pushed, re-verified from a fresh worktree — clean build, no warnings, 61/61 tests pass. No sanitizer (ASan/UBSan) pass was run on this branch this round.
+
+L8 (music-transform, music-analysis, music-generation) — completed, pushed to feat/transform-analysis-generation, ready to merge
+
+36 commits, 95/95 tests passing, clean build with no warnings (after two corrections — see below):
+
+--- music-transform (11 concrete Transformation subtypes) ---
+
+1. Scaffold music-transform + music-analysis + music-generation + directory-driven architecture gate tests confirming each depends on music-identity (L0) through music-rules (L7) only, with no music-corpus/music-io/music-notation/music-performance (L9) import possible, AND — the stricter L8 rule — no sideways import among the three L8 siblings themselves
+2. Transformation (Category/base type) — id, opaque input_type/output_type/preserved_dimensions/modified_dimensions/mapping_behavior/validation descriptor strings (no generic type-registry concept exists yet at this layer), an opaque optional parameters Value, a deterministic flag, and required provenance (TDD §139-140); no apply() of its own — evaluation is per concrete subtype; referentially transparent by construction (no mutator, no reference back into an input object it could alter)
+3-13. Transposition, Inversion, Retrograde, RetrogradeInversion, Augmentation, Diminution, Fragmentation, Expansion, Contraction, Displacement, Ornamentation — each owns one Transformation built internally at construction (a caller never assembles the base type itself); `<subtype>_id`/`<subtype>_provenance` forward to it. Notable per-subtype constraints: Retrograde requires an explicit non-zero bitmask of which dimension(s) reverse, no silent "reverse everything" default; Augmentation/Diminution require an explicit dimension enum (durations/inter-onset/structural/notation/performance timing) with DURATIONS as enum value 0 so an uninitialized caller variable can never silently touch performance timing; Fragmentation/Expansion/Contraction share one array-of-EntityID-references-plus-count shape (extract/append/drop by reference, never by copying NoteEvent payloads); RetrogradeInversion composes Retrograde+Inversion rather than reimplementing either; Ornamentation is the one subtype the Registry explicitly calls out as needing Provenance most, since its one-to-many fan-out (one source event to several derived events) is the trickiest case to get right — though every subtype carries provenance via the base contract regardless
+
+--- music-analysis (Analyzer interface, FeatureExtraction, 8 concrete analyzers) ---
+
+14. Analyzer (Interface) — a function-pointer interface (name + AnalyzerFn), not a data type with its own create/destroy; analyze(input, context, config) -> AnalysisResult; input is an opaque borrowed pointer (no generic type registry exists), context/config borrowed and optional
+15. FeatureExtraction (Concept, not a Category — carries no EntityID of its own, same treatment Uncertainty gets) — independently-optional interval/contour/density fields, each with its own has_* flag rather than one opaque feature blob
+16. Fix: AnalysisResult originally referenced Interpretation/Evidence by id; revised to OWN the derived Interpretation/Evidence objects a single analyze() call produces, since there is nowhere else for them to live once analyze() returns — caught during implementation, not by a later test failure, and fixed before any analyzer built on top of it
+17-24. IntervalAnalysis, ScaleAnalysis, ChordIdentification, KeyEstimation, VoiceLeadingAnalysis, CadenceDetection, MotifDetection, PhraseSegmentation — every one follows the same "caller supplies the already-measured dimension, the analyzer packages it" division, since PitchIdentity carries no tuning-system semantics at this layer and none of the eight can derive their own measurements from raw pitch tokens. ChordIdentification/KeyEstimation identify a chord/key and report it as a framework-relative Interpretation but do NOT construct a Chord/Key object — those belong to music-interpretation (L6) and don't exist yet; same deferred-construction treatment CadenceDetection uses for Cadence and MotifDetection uses for the MotifOccurrence it validates but doesn't persist. ScaleAnalysis/ChordIdentification/CadenceDetection wrap ambiguous findings as an UNCERTAINTY_KIND_CANDIDATE_SET rather than collapsing to a scalar; VoiceLeadingAnalysis/PhraseSegmentation are exact-given-inputs, so scalar confidence is correct there instead
+25. Fix: MotifDetection's constructed-then-discarded MotifOccurrence (built only to validate the reference list before reporting it via Interpretation) wasn't freeing its region_event_ids array on destroy — a straightforward leak in a transient validation object, caught and fixed same-session
+
+--- music-generation (Intent through GenerationRecord) ---
+
+26. Intent (Category/base type) — purpose/target required; style/context/meter/length/constraints/preferences/source_material all optional; constraints/preferences are RAW, pre-extraction opaque Value payloads, not yet executable Constraint/Preference objects — Intent is the ONLY entry point natural language may reach the IR through (TDD §154)
+27. IntentCompiler (Interface, contract-only, no NLP implementation) — same function-pointer-interface shape as Analyzer; compile(request_text, context, config) -> Intent
+28. ConstraintExtraction (Concept) — the executable constraint set an Intent normalizes into: independent owned arrays of real L7 Constraint/Preference objects, no forced 1:1 with Intent's own raw counts (one raw constraint may normalize to zero, one, or several)
+29. ConflictDetection (Concept) — requires at least two conflicting ids per record (a conflict cannot be reported about a single requirement, TDD §156) and keeps priority/severity/weight as three genuinely distinct fields — a rank, a fixed-vocabulary category, and an exact-rational magnitude — never synonyms (TDD §157)
+30. GenerationPlan (Entity) — OWNS an Intent and a ConstraintExtraction (neither has a store elsewhere at this layer, same "nowhere else for it to live" situation AnalysisResult is in); constraints field is required even when empty, since even a no-constraints Intent still normalizes to a valid empty ConstraintExtraction
+31. Generator (Interface) — generate(plan, random_seed, configuration) -> CandidateSet; declares its own metadata (supported_inputs/outputs, configuration_description, constraints_description, deterministic, version — TDD §160) as fields on the interface value itself, not something inferred from behavior; forward-declares CandidateSet as an opaque struct since Candidate (next commit) doesn't exist yet — this header never dereferences it, only holds/returns pointers
+32. Candidate (Category/base type, shared shape with music-analysis per Registry) — material referenced by id, evaluations/violations as two independent owned Interpretation arrays (reusing L6 Interpretation rather than inventing a new evaluation type), an exact-rational score, provenance (TDD §158). Also defines CandidateSet under the identical struct tag Generator forward-declared, plus TDD §163's full reproducibility bundle (random_seed, generator_version, configuration, input_ids, framework_version) — framework_version flagged as a KNOWN GAP since Framework carries no version field yet, kept optional rather than blocking on it
+33. CandidateEvaluator (Interface) + CandidateEvaluation (Category) — evaluate(candidate, rules, constraints, preferences, statistical_models) -> CandidateEvaluation, all four L7 vocabulary arrays borrowed, not owned; CandidateEvaluation holds the identical evaluations/violations-as-Interpretation shape AnalysisResult uses, but is defined independently here since L8's sideways-restriction forbids music-generation from importing music-analysis even for an identical shape (TDD §159 — never a bare pass/fail with no reasoning trail)
+34. GenerationRecord (Entity) — the durable, standalone log entry that a generation run happened (seed, generator_version, framework_version, configuration, provenance), distinct from CandidateSet's reproducibility bundle (scoped to one generate() call) and Generator's own version field (a declared capability, present whether or not it was ever invoked)
+
+--- docs + fix ---
+
+35. docs/ARCHITECTURE.md updated with the L8 layer entry, module table, and a full L8 notes section covering the Chord/Key deferral, every module's key design decisions, and every deferred/out-of-scope item below
+36. Fix: five music-generation test files (test_intent, test_generation_plan, test_candidate, test_candidate_evaluator, test_generation_record) called make_absent_provenance() inline as an argument to a _create() call designed to fail validation on an earlier field — the allocated ProvenanceReference was never freed since ownership was never taken. Caught by a full valgrind sweep (not by ctest, which only asserts return codes), not a compile or logic issue. Fixed all 9 occurrences across the 5 files; re-verified clean with valgrind --leak-check=full --show-leak-kinds=all on all 9 music-generation test binaries afterward.
+
+OPEN ISSUE FLAGGED, GUARDRAIL, NOT VIOLATED: Chord and Key (Registry: music-interpretation, L6) are identified by ChordIdentification/KeyEstimation and reported as framework-relative Interpretations, but neither constructs the actual Chord/Key object — there's nothing at L6 yet to construct. Deferred as L6 follow-up work, not silently skipped or faked with a placeholder type.
+
+Open items intentionally left unresolved, not silently decided:
+- ConstraintSolver, Search/Optimizer — Registry Normative = No, "Phase-list mention only, no dedicated contract," reference concept only, not built
+- Hierarchical Generators (ThemeGenerator, PhraseGenerator, BasicIdeaGenerator) — Registry Phase 13, not this pass's Phase 12
+- PracticeRequest/PracticeGenerator, DifficultyModel — application-level, belongs to L9 Applications, not L8
+- framework_version on CandidateSet/GenerationRecord — TDD §163 requires it, but Framework (L7) has no version field yet; kept optional rather than fabricated
+- Actual I/O format adapters (MIDI/MusicXML/MEI/ABC) — L9, out of scope
+- Corpus ingestion/statistics itself — L9, and separately still blocked from being imported here regardless per L7's own open Corpus issue (CandidateEvaluator consuming a StatisticalModel is fine — that's L8 -> L7 — but nothing in L8 reaches past L7 into music-corpus directly)
+- Species counterpoint / common-practice harmony frameworks (Phase 10/11) — these consume Framework/Rule/Constraint as extension modules, not part of L8's own build
+
+Verification performed: rebuilt from a clean configure and re-ran the full suite directly from origin/feat/transform-analysis-generation after each of the two fix commits landed — clean build, no warnings, 95/95 tests pass, all three architecture-gate tests confirm no L9 import and no sideways L8-sibling import anywhere. Ran a full valgrind --leak-check=full --show-leak-kinds=all sweep across every music-generation and music-analysis test binary post-fix: clean. Also swept music-transform's test binaries for the same class of bug (provenance/pitch-identity leaked in an error-path test helper) — found the identical pattern pre-existing across most of that module's tests (built before commit 25 was reasoned about). Left as-is rather than folded into this branch: it's test-only, doesn't affect what's being asserted, and is exactly the kind of mechanical cleanup a planned stabilization pass across the whole library will catch faster in bulk than as a one-off here. No sanitizer (ASan/UBSan) pass was run on this branch this round.

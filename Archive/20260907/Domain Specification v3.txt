@@ -1,0 +1,897 @@
+# DOMAIN ONTOLOGY SPECIFICATION (Deliverable B)
+**Status: Draft v0.2 — Not Frozen**
+Source: TDD v4 §233/§260, System Registry v2, Dependency & Layer Specification v1.1
+Normative: Yes (pending Phase-0 freeze per TDD §260)
+Supersedes: v0.1
+
+---
+
+## 0. Status Statement
+
+This is the revised working Deliverable B. It corrects a layer-dependency contradiction identified in v0.1 (NoteEvent's direct reference to Voice) and tightens several ambiguities (PitchIdentity's field model, provenance presence semantics, TimeSpan boundary vocabulary scope, and Registry synchronization for kernel-invented reference types).
+
+This document remains **not frozen**. It is suitable for the project file as the working Deliverable B, but:
+
+- it introduces two proposed architectural primitives (`VoiceReference`, and a relocated `RelationshipReference`) that are **not yet represented in the System Registry** — per the Registry-First Dependency Rule (Dependency Spec §6), no implementation may use them until the Registry is updated (see §14);
+- it leaves the Entity/Occurrence/Event category boundary explicitly unresolved (§16);
+- it defers exact temporal boundary vocabulary to Deliverable C (§6);
+- it defers exact PitchIdentity representation and equivalence model to Deliverable D (§7).
+
+Nothing in this revision should be read as a silent resolution of any open architectural question. Where v0.1 was ambiguous, this version either fixes the ambiguity with a concrete, dependency-safe answer, or converts the ambiguity into an explicit open issue.
+
+---
+
+## 1. Scope & Terminology
+
+TDD v4 §233 specifies ten objects for "Phase 1":
+
+```
+EntityID
+Duration
+MusicalTime
+TimeSpan
+PitchIdentity
+PitchSpelling
+NoteEvent
+Voice
+RelationshipReference
+ProvenanceReference
+```
+
+**Terminology correction (v0.2):** this document refers to these as **the ten Phase-1 ontology objects required by TDD §233**, not as "the Phase 1 kernel" implying all ten live inside `music-core` / L1. Under the Dependency & Layer Specification, these ten objects span multiple layers:
+
+```
+L0  EntityID
+L1  RelationshipReference (proposed relocation, see §12), VoiceReference (proposed, see §11)
+L2  Duration, MusicalTime, TimeSpan, PitchIdentity, PitchSpelling
+L3  NoteEvent
+L4  Voice
+Cross-cutting (L0–L1 ceiling)  ProvenanceReference (see §13)
+```
+
+TDD §233's ten-object *scope* is unchanged by this correction — only the terminology implying single-layer residency is corrected.
+
+---
+
+## 2. Normative Rule: Reference-Only Dependency vs. Module Dependency
+
+This rule is introduced to resolve the NoteEvent → Voice contradiction (§9, §11) and to govern all future cases of the same shape.
+
+> A lower-layer object may carry an opaque reference to an object conceptually belonging to a higher layer **only when**:
+> 1. the reference type itself is defined in the lower layer (or an allowed cross-cutting module per Dependency Spec §4), **not** in the higher layer's module; and
+> 2. holding or serializing that reference does **not** require the lower-layer module to import the higher-layer module; and
+> 3. resolving the reference into the actual higher-layer object is performed by code at or above the higher layer, never by the lower-layer module itself.
+
+This is **not** general permission for forward dependencies. It authorizes exactly one pattern: an opaque, EntityID-shaped pointer, defined low, resolved high. It does not authorize embedding any semantics, fields, or behavior of the higher-layer object into the lower layer.
+
+Any reference type introduced under this rule (e.g., `VoiceReference`, `RelationshipReference`) **must** be registered in the System Registry per the Registry-First Dependency Rule (Dependency Spec §6) before use in implementation. Proposing the type here does not constitute that registration — see §14.
+
+---
+
+## 3. EntityID
+
+**Purpose**
+Provide stable identity for persistent objects, independent of position, storage location, or content.
+
+**Semantic definition**
+EntityID is an opaque token that names one conceptual object across its entire lifetime, including all its revisions. It answers "which thing is this" — never "where is it" or "what version is it."
+
+**Fields**
+```
+value: opaque identifier string
+```
+
+**Types**
+Value object (immutable).
+
+**Identity**
+EntityID is not itself an entity with an identity of its own — it *is* the identity primitive. Two EntityID instances are the same identity iff their values are equal.
+
+**Equality**
+Value equality. `EntityID(x) == EntityID(x)` regardless of instance.
+
+**Invariants**
+```
+- value MUST be non-empty
+- value MUST NOT encode positional information (array index, measure number, row number) per Law 16
+- value MUST be stable for the lifetime of the entity it identifies, across all revisions
+```
+
+**Relationships**
+Referenced by every persistent Entity, by Version (paired as EntityID+Version), by ProvenanceReference, RelationshipReference, and VoiceReference (all are, structurally, typed wrappers over EntityID — see §11–§13).
+
+**Lifecycle**
+Assigned once at entity creation. Never reassigned, never reused after tombstoning (TDD §15).
+
+**Serialization requirements**
+```
+- MUST serialize as a stable string/opaque scalar
+- MUST NOT serialize as, or be derived from, database row number or array index
+```
+
+**Examples**
+```
+EntityID("motif-3f9a2b")
+EntityID("note-8e92c1")
+```
+
+**Tests**
+Invariant: non-empty, no positional leakage.
+Serialization: round-trips to identical value.
+
+**Layer / Dependency**
+L0 (music-identity). No dependencies. Registry status: present, unchanged.
+
+---
+
+## 4. Duration
+
+**Purpose**
+Represent an amount of symbolic time, exactly.
+
+**Semantic definition**
+Duration is a Value representing "how much time" independent of when it starts. It is a scalar magnitude in the MusicalTime domain, not a position.
+
+**Fields**
+```
+numerator: Integer
+denominator: PositiveInteger
+```
+
+**Types**
+Value object (immutable), exact rational.
+
+**Identity**
+None — pure value type, no identity.
+
+**Equality**
+Value equality on the *reduced* rational value (3/4 == 6/8). This is value equality, not canonical equality — the reduction is intrinsic to what a rational number is, not a normalization policy choice.
+
+**Invariants**
+```
+- duration >= 0 (Law 19 / TDD §19)
+- denominator > 0
+- MUST NOT be represented or compared via floating-point arithmetic (Law 19)
+```
+
+**Relationships**
+Used by NoteEvent, RestEvent, TimeSpan (as span length), Tempo/TempoMap indirectly.
+
+**Lifecycle**
+Immutable value; not versioned, not revised. New Duration values are constructed, never mutated.
+
+**Serialization requirements**
+```
+- MUST serialize numerator/denominator as exact integers, never as float/double
+- Reduction to lowest terms SHOULD occur at construction; serialized form SHOULD be canonical (reduced)
+```
+
+**Examples**
+```
+Duration(1,4)   -- quarter note
+Duration(3,16)
+Duration(0,1)   -- zero-duration, valid; see TimeInstant (Deliverable C) for zero-duration events
+```
+
+**Tests**
+Property-based: duration never negative under any constructor path; `Duration(a,b) == Duration(ka,kb)` for any positive integer k.
+Invariant: denominator > 0 rejected otherwise.
+
+**Layer / Dependency**
+L2 (music-time). No dependencies beyond primitive numeric types. Registry status: present, unchanged.
+
+---
+
+## 5. MusicalTime
+
+**Purpose**
+Represent an exact symbolic temporal position.
+
+**Semantic definition**
+MusicalTime is a Value representing "when," expressed as an exact rational offset within a declared temporal frame (e.g., from the start of a Work or a Container). It is a position, not a magnitude — this is the dimension distinguishing it from Duration.
+
+**Fields**
+```
+numerator: Integer
+denominator: PositiveInteger
+```
+
+**Types**
+Value object (immutable), exact rational. Structurally identical in shape to Duration but semantically distinct (a position, not an amount) — MusicalTime and Duration MUST NOT be used interchangeably even though their representations coincide.
+
+**Identity**
+None — pure value type.
+
+**Equality**
+Value equality on reduced rational value.
+
+**Invariants**
+```
+- MUST NOT depend on floating-point arithmetic (Law 19)
+- denominator > 0
+- No inherent lower bound is imposed by the kernel itself; negative MusicalTime (e.g., pickup/anacrusis contexts) is a modeling decision left to the Temporal Semantics Specification (Deliverable C)
+```
+
+**Relationships**
+Anchors NoteEvent, RestEvent, ControlEvent via TemporalAnchor. Composed into TimeSpan (start/end). Distinct from NotatedTime, PerformanceTime, AudioTime (Law 19 corollary; TDD §17) — no implicit conversion between these exists at the kernel level.
+
+**Lifecycle**
+Immutable value; constructed, not mutated.
+
+**Serialization requirements**
+```
+- Exact rational values only, no float
+- Deterministic representation for canonical serialization (Spec O)
+```
+
+**Examples**
+```
+MusicalTime(0,1)     -- start
+MusicalTime(1,4)
+MusicalTime(7,12)
+```
+
+**Tests**
+Property-based: arithmetic (addition of Duration to MusicalTime) preserves exactness.
+Golden: known offset values serialize/deserialize identically.
+
+**Layer / Dependency**
+L2 (music-time). No dependencies beyond primitive numeric types. Registry status: present, unchanged.
+
+---
+
+## 6. TimeSpan
+
+**Purpose**
+Represent an explicit temporal region, without assuming every object is expressible as onset+duration alone.
+
+**Semantic definition**
+TimeSpan is a Value bounding a region of MusicalTime with explicit boundary semantics. It exists so that "region" is a first-class concept independent of any single event's own onset/duration pair — needed for occurrences, structures, and relationship scopes that span multiple events.
+
+**Fields**
+```
+start: MusicalTime
+end: MusicalTime
+boundary: <boundary vocabulary — see scope note below>
+```
+
+**Types**
+Value object (immutable).
+
+**Identity**
+None — pure value type.
+
+**Equality**
+Value equality: two TimeSpans are equal iff start, end, and boundary semantics are all equal. Two spans with equal start/end but different boundary semantics are NOT equal — the boundary is not incidental metadata, it changes what the span denotes.
+
+**Invariants**
+```
+- end >= start
+- boundary MUST be explicit and drawn from a declared vocabulary; it MUST NOT be left implicit/undeclared
+```
+
+**Scope note on boundary vocabulary (v0.2 revision)**
+TDD §20 states a TimeSpan "may be: closed, open, left_closed, right_closed" as an illustrative list ("where the domain requires boundary distinctions") — it is not phrased as a closed, frozen enumeration mandated for all time. v0.1 froze this as a hard four-value enum at Deliverable B; that overreached. This revision:
+
+- **retains as normative**: boundary semantics MUST be explicit and part of value equality (this is the actual architectural requirement TDD is protecting against);
+- **defers as provisional**: the exact enumeration of boundary values. `closed / open / left_closed / right_closed` is retained here as the *working* vocabulary since it is TDD's own illustrative set and unblocks Phase 1 implementation, but it is **not frozen** — the Temporal Semantics Specification (Deliverable C) owns the authoritative boundary vocabulary and may extend, rename, or refine it (e.g., for degenerate zero-length spans, or unbounded spans) without that being a breaking change to this document's intent, provided explicitness and value-equality inclusion are preserved.
+
+**Relationships**
+Used by Occurrence (situating a structure in a region), Relationship (as scope), MeterMap (region ↔ meter), Structure occurrences generally.
+
+**Lifecycle**
+Immutable value; constructed, not mutated.
+
+**Serialization requirements**
+```
+- start, end serialize as MusicalTime (exact rational)
+- boundary MUST be explicit in serialized form — MUST NOT default silently to "closed" on deserialization if omitted; omission is an error, not an implicit default
+```
+
+**Examples**
+```
+TimeSpan(start=0/1, end=1/4, boundary=left_closed)   -- one quarter-note region
+TimeSpan(start=0/1, end=4/1, boundary=closed)         -- a full measure region in 4/4
+```
+
+**Tests**
+Invariant: end >= start enforced at construction.
+Invariant: boundary field required, no implicit default.
+
+**Layer / Dependency**
+L2 (music-time). Depends on MusicalTime (same layer). Registry status: present, unchanged (working boundary vocabulary flagged provisional, pending Deliverable C — see §16).
+
+---
+
+## 7. PitchIdentity
+
+**Purpose**
+Represent abstract pitch information without committing to any tuning system, pitch-class cardinality, or reference frequency.
+
+**Semantic definition**
+PitchIdentity is the root abstraction of the pitch dimension hierarchy (PitchIdentity → PitchClass, PitchSpelling, PitchRealization). It names "a pitch, abstractly" — it does not assert how many pitch classes exist, whether 12-TET applies, or what frequency corresponds to it. It exists specifically to prevent 12-tone equal-temperament assumptions from being baked into the kernel (Law 18, TDD §34).
+
+**Fields (v0.2 revision)**
+v0.1 defined `id: EntityID | opaque reference`, which contradicted PitchIdentity's classification as a Value with no independent lifecycle identity — an EntityID implies entity-style identity semantics (uniqueness, lifecycle, versioning eligibility) that a pure Value must not carry. This is corrected:
+
+```
+token: opaque internal representation   -- NOT an EntityID; carries no lifecycle/versioning semantics
+```
+
+`token` is an implementation-internal discriminator only (e.g., to let two PitchIdentity values be distinguished/compared/hashed). It:
+- MUST NOT be interpreted as, or coerced into, an EntityID;
+- MUST NOT be used as a persistence key implying entity lifecycle;
+- carries no meaning by itself — its purpose is solely to make PitchIdentity a well-formed comparable Value, not to name a persistent thing.
+
+The exact internal representation, and the equivalence relation over it, are deferred to the Pitch and Tuning Specification (Deliverable D) in full — this document only fixes that whatever the representation turns out to be, it is Value-shaped, not Entity-shaped.
+
+**Types**
+Value object (immutable). No Entity classification, in v0.1 or v0.2 — this was already the intent; v0.2 removes the field that contradicted it.
+
+**Identity**
+No independent lifecycle identity. Distinct PitchIdentity values denote distinct abstract pitches; there is no "revision" or "version" of a PitchIdentity — a changed pitch is a different value, not a new version of the same identity.
+
+**Equality**
+Value equality — RESOLVED (v0.3 update, 2026-09-04): equals() is strict identity on the opaque token (same token = same value). This is intentional and final, not a placeholder. What "equal pitch identity" means at coarser granularities (e.g. octave-equivalence, enharmonic-equivalence) is answered by PitchClass, not by PitchIdentity — those are two different questions, not one question at two levels of polish. PitchClass now exists (music-pitch, implemented) specifically to hold theory-relative/equivalence-class comparison via a caller-supplied equivalence relation, keeping PitchIdentity itself theory-neutral.
+
+**Invariants**
+```
+- MUST NOT assume 12 pitch classes
+- MUST NOT assume equal temperament
+- MUST NOT assume A4 = 440 Hz
+- MUST NOT assume integer MIDI note numbers
+- MUST NOT carry EntityID or entity-lifecycle semantics (v0.2 addition)
+```
+
+**Relationships**
+Root of PitchClass, PitchSpelling, PitchRealization, PitchTrajectory (all depend on PitchIdentity, not vice versa). Referenced by NoteEvent.
+
+**Lifecycle**
+Immutable value; constructed, not mutated. No entity lifecycle (creation/revision/tombstoning) applies.
+
+**Serialization requirements**
+```
+- MUST NOT hard-code tuning assumptions in serialized form
+- MUST be extensible to support non-12-TET, non-A440 pitch systems without schema change
+- MUST NOT serialize `token` in a form that a consumer could mistake for a resolvable EntityID reference
+```
+
+**Examples**
+```
+-- Conceptual only; concrete shape deferred to Deliverable D
+PitchIdentity(token=<opaque>)
+```
+
+**Tests**
+TBD — pending Deliverable D. Placeholder invariant test: construction does not require tuning-system parameters; construction does not accept or produce an EntityID-typed value for `token`.
+
+**Layer / Dependency**
+L2 (music-pitch). No dependencies. Registry status: present; Registry's field description should be checked against this revision (see §14).
+
+---
+
+## 8. PitchSpelling
+
+**Purpose**
+Represent notation-oriented pitch identity — how a pitch is named/written — independent of its sounding realization.
+
+**Semantic definition**
+PitchSpelling captures the notational naming of a pitch (letter, accidental, octave) as distinct from PitchRealization (frequency/ratio/cents). Its purpose is to preserve the distinction between enharmonically-equivalent spellings (C# vs Db) that are semantically different in notation/theory even when their sounding pitch coincides under some tuning systems (TDD §36, §120).
+
+**Fields**
+```
+letter: enum { A, B, C, D, E, F, G }   -- or framework-extensible equivalent
+accidental: Integer | enum             -- deferred to Deliverable D for exact model
+octave: Integer
+```
+
+**Types**
+Value object (immutable).
+
+**Identity**
+None — pure value type.
+
+**Equality**
+Value equality on (letter, accidental, octave) triple. C# and Db are NOT value-equal under this definition even if their PitchRealization coincides — this is intentional (Law 18; canonicalization MUST NOT collapse this distinction per TDD §120).
+
+**Invariants**
+```
+- letter MUST be a valid pitch letter name under the declared alphabet
+- octave numbering convention MUST be explicit/declared
+- spelling MUST remain distinguishable from PitchRealization at all times — no implicit collapse
+```
+
+**Relationships**
+Attaches to PitchIdentity. Referenced optionally by NoteEvent (`optional_pitch_spelling` per TDD §122). Distinct from WrittenPitch/SoundingPitch (instrument transposition dimension — Law 18).
+
+**Lifecycle**
+Immutable value; constructed, not mutated.
+
+**Serialization requirements**
+```
+- letter, accidental, octave MUST each serialize explicitly
+- MUST NOT be inferred/reconstructed solely from PitchRealization on deserialization
+```
+
+**Examples**
+```
+PitchSpelling(letter=C, accidental=+1, octave=4)   -- C#4
+PitchSpelling(letter=D, accidental=-1, octave=4)   -- Db4
+```
+
+**Tests**
+Property-based: spelling round-trips through serialization without collapsing to an enharmonic equivalent.
+Invariant: two enharmonically-equivalent spellings are NOT value-equal.
+
+**Layer / Dependency**
+L2 (music-pitch). Depends on PitchIdentity (same layer). Registry status: present, unchanged.
+
+---
+
+## 9. NoteEvent
+
+**STATUS: BOUNDARY UNRESOLVED** (Registry: "Entity vs Event vs pure Occurrence/Value structure"). This entry documents NoteEvent under the *provisional* Event-category treatment used elsewhere in TDD v4, while flagging the unresolved question rather than silently resolving it. This status is unchanged from v0.1.
+
+**Purpose**
+Represent a symbolic musical occurrence — the foundational note-level unit of the canonical domain.
+
+**Semantic definition**
+A NoteEvent is a canonical, symbolic representation of "a note occurring." Per Law 3/4/5 and TDD §45, a NoteEvent is explicitly NOT: a notation symbol, a MIDI message, a performed sound, a scale degree, or a chord member. It is the theory-neutral symbolic occurrence that notation, performance, and analysis all reference but none of them own.
+
+**Fields (v0.2 revision)**
+v0.1 declared `optional_voice: Voice reference`. Under the Dependency & Layer Specification, NoteEvent is L3 (`music-events`) and Voice is L4 (`music-containers`); L3 MUST NOT depend on L4 (Dependency Spec §2). A direct Voice-typed field on NoteEvent would require `music-events` to import `music-containers`, which is forbidden. This is corrected per the reference-only rule (§2):
+
+```
+id: EntityID
+temporal_anchor: TemporalAnchor (wraps MusicalTime)
+duration: Duration
+pitch: PitchIdentity
+optional_pitch_spelling: PitchSpelling
+optional_voice: VoiceReference          -- v0.2: was `Voice reference`, now an opaque
+                                          --   L1-defined reference (see §11), not a
+                                          --   music-containers-typed field
+provenance: ProvenanceReference          -- see §13 for present/absent/omitted semantics
+```
+
+NoteEvent's dependency on "Voice" is therefore a **reference-only** dependency, not a **module** dependency: `music-events` imports `music-core` (for `VoiceReference`, an L1 type) but does not import `music-containers`. Resolving a `VoiceReference` into an actual `Voice` object is performed by code at L4 or above (e.g., application/query code), never inside `music-events` itself.
+
+**Types**
+Provisionally: Entity/Event hybrid. Category placement contested — see Registry note "BOUNDARY UNRESOLVED (Entity vs Event vs pure Occurrence/Value structure)." Do not implement architecture tests or code that assumes this is settled; treat as Structural (Unresolved) per Registry Contract Type until Deliverable B resolves it.
+
+**Identity**
+Has a stable EntityID, independent of measure number, voice position, array index, MIDI tick, or file location (Law 16, TDD §14).
+
+**Equality**
+Identity equality is primary (same EntityID + Version = same event). Value/structural equality across two *different* NoteEvent identities with identical field values is possible but does NOT imply they are the same event.
+
+**Invariants**
+```
+- id MUST be stable and independent of position (Law 16)
+- duration >= 0 (inherited from Duration)
+- pitch MUST reference a valid PitchIdentity
+- provenance MUST be represented as present, explicitly absent, or (never) silently omitted — see §13
+- present provenance MUST resolve to a real record; a dangling ProvenanceReference is an invariant violation
+- MUST NOT embed instrument transposition into pitch (Law 18) — written vs sounding pitch is separate
+- optional_voice, if present, MUST be a VoiceReference (opaque EntityID-shaped pointer) — MUST NOT be
+  a resolved Voice object or otherwise require music-containers types at the music-events layer
+```
+
+**Relationships**
+Referenced by: Interval (as endpoint), Sonority (as member), PerformanceEvent (via realizes relationship, cardinality 0..n — TDD §62), Tie (connects two NoteEvents without merging — TDD §49), Slur/Articulation/Dynamics (attachments), Voice (containment, resolved via VoiceReference), Motif/MotifOccurrence (via event refs, non-duplicating).
+
+**Lifecycle**
+```
+creation → revision → derivation → supersession → deletion/tombstoning
+```
+Transformations (e.g., Transposition) create new NoteEvent identities with provenance links back to source events (Law 20) — they do not mutate the source NoteEvent in place. Deletion from an application view does not destroy provenance (TDD §15).
+
+**Serialization requirements**
+```
+- id MUST serialize as stable EntityID, not positional index
+- temporal_anchor/duration MUST serialize as exact rationals
+- optional_voice, if present, MUST serialize as an opaque VoiceReference identifier only —
+  never as an inlined/embedded Voice object or its fields
+- provenance MUST serialize with an explicit present/absent marker (§13) — omission is invalid
+  wherever the schema requires the field to be represented
+```
+
+**Examples**
+```
+NoteEvent(
+  id="note-1",
+  temporal_anchor=0/1,
+  duration=1/4,
+  pitch=PitchIdentity(C4),
+  optional_pitch_spelling=PitchSpelling(C,natural,4),
+  optional_voice=VoiceReference("voice-1"),
+  provenance=ProvenanceReference(state=present, id="import-activity-9")
+)
+```
+
+**Tests**
+Invariant: id stability under serialization round-trip.
+Invariant: duration >= 0.
+Relationship: Tie between two NoteEvents does not merge/alter either event's own fields.
+Provenance: derived NoteEvent (e.g., transposition output) carries a valid, non-dangling ProvenanceReference.
+Architecture test (v0.2 addition): `music-events` module does not import `music-containers`.
+Pending: full test spec blocked on category-boundary resolution (Registry: "TBD — pending Domain Spec resolution").
+
+**Layer / Dependency**
+L3 (music-events). Module dependencies: music-time, music-pitch (L2, allowed), music-core (L1, for VoiceReference/RelationshipReference types), music-provenance (cross-cutting, allowed per Dependency Spec §4). Reference-only dependencies: Voice (L4, via VoiceReference), Relationship (L6, via RelationshipReference). No module dependency on music-containers or music-relationship. See full audit in §15.
+
+---
+
+## 10. Voice
+
+**Purpose**
+Represent a logical stream or simultaneity domain, without implying instrument, staff, part, harmony, or melodic role.
+
+**Semantic definition**
+A Voice is a Container grouping NoteEvents (and other events) into a logical stream. Critically, Voice is semantically inert with respect to orchestration and notation layout — TDD §53 is explicit that a Voice does not automatically imply an instrument, a staff, a part, a harmonic role, or a melodic role. Those relationships, if they hold, must be represented explicitly (e.g., via a separate Voice↔Instrument relationship), not assumed.
+
+**Fields**
+```
+id: EntityID
+-- membership is represented via event references or containment relationships,
+--    not by embedding a full event list as owned/mutable state
+```
+
+**Types**
+Container (base category).
+
+**Identity**
+Stable EntityID, independent of position within a Part/Staff.
+
+**Equality**
+Identity equality (same EntityID+Version).
+
+**Invariants**
+```
+- a Voice MUST NOT be assumed to map 1:1 to an Instrument, Staff, or Part
+- a Voice MAY appear on multiple staves; a Staff MAY contain multiple voices (TDD §54)
+```
+
+**Relationships**
+Contains NoteEvent (and other event) references. May relate to Staff, Part, Instrument via explicit relationships (not implicit containment). Distinct from Layer (notation-layer grouping) and Part (instrument/performer grouping) — TDD §54. Is the resolution target of `VoiceReference` (§11) held by NoteEvent — Voice itself does not need to know about VoiceReference as a type; the reference exists for the benefit of lower-layer holders, not for Voice's own definition.
+
+**Lifecycle**
+Created; membership may be revised over time (events added/removed by reference); not typically tombstoned except as part of broader structural revision.
+
+**Serialization requirements**
+```
+- id MUST serialize as stable EntityID
+- membership references MUST serialize as explicit event ID lists/relationships, not implicit positional grouping
+```
+
+**Examples**
+```
+Voice(id="voice-1")  -- referenced by NoteEvent.optional_voice via VoiceReference("voice-1")
+```
+
+**Tests**
+Invariant: Voice object does not carry an implicit Instrument/Staff/Part field baked into its required schema.
+Relationship: a single Voice can be referenced by NoteEvents that are, via separate relationships, associated with more than one Staff, without contradiction.
+
+**Layer / Dependency**
+L4 (music-containers). May depend on music-events (L3) to hold NoteEvent references — permitted, since L4 may depend on L0..L3 (Dependency Spec §2). This direction (L4 → L3) is the reverse of, and does not conflict with, NoteEvent's L1-mediated reference to Voice.
+
+---
+
+## 11. VoiceReference (Proposed — New Architectural Primitive)
+
+**Status:** Proposed in this revision to resolve the NoteEvent → Voice layer contradiction (§9). **Not yet represented in the System Registry.** Per the Registry-First Dependency Rule (Dependency Spec §6), this type MUST NOT be used in implementation until it is added to the Registry (see §14 for the proposed entry).
+
+**Purpose**
+Provide an L1-safe, opaque reference to a Voice (L4) so that L3 objects (specifically NoteEvent) can associate with a Voice without `music-events` importing `music-containers`.
+
+**Semantic definition**
+A VoiceReference is a Value that names/points to a Voice using stable identity, without resolving or embedding the Voice object itself. It exists solely to satisfy the reference-only dependency rule (§2): the *reference type* lives at a layer both the holder (NoteEvent, L3) and the target (Voice, L4) can legally depend on downward/at-or-below, i.e., L1.
+
+**Fields**
+```
+voice_id: EntityID reference (opaque; resolves to a Voice object at L4, not resolved at L1 or L3)
+```
+
+**Types**
+Value object (immutable) — deliberately not the Voice entity itself, and deliberately not defined inside `music-containers`.
+
+**Identity**
+None of its own; it is a pointer, not an identified thing. Its target (the Voice it references) has identity via that Voice's own EntityID.
+
+**Equality**
+Value equality on the referenced EntityID.
+
+**Invariants**
+```
+- MUST NOT embed Voice semantics (membership, containment relationships, staff/part associations) at L1
+  — those belong to the L4 Voice object, resolved later
+- MUST NOT require the L4 music-containers module to be loaded/available for L1–L3 objects to hold
+  a VoiceReference
+- resolution (VoiceReference → Voice) MUST occur only in code at L4 or above
+```
+
+**Relationships**
+Held by NoteEvent (`optional_voice`). Resolves, at L4 or above, to a Voice object maintained by `music-containers`.
+
+**Lifecycle**
+Constructed alongside the NoteEvent (or other holder) that carries it; may go stale (dangling reference) if the target Voice is deleted/tombstoned — staleness handling is a Container/Structure Specification concern, not defined here.
+
+**Serialization requirements**
+```
+- MUST serialize as an opaque identifier only — no inlined Voice payload
+```
+
+**Examples**
+```
+VoiceReference("voice-1")
+```
+
+**Tests**
+Architecture test: `music-events` (L3) does not import `music-containers` (L4) despite holding VoiceReference values.
+Invariant: VoiceReference carries no membership/containment fields.
+
+**Layer / Dependency**
+L1 (music-core), proposed. Module dependency: EntityID (L0) only. Registry status: **not present — proposed addition, see §14.**
+
+---
+
+## 12. RelationshipReference (Revised — Module Location Corrected)
+
+**Status:** Revised in this revision. v0.1 did not specify a module location for this type; left implicit, it risked being read as living inside `music-relationship` (L6), which would make it useless for its stated purpose (letting L1–L4 objects be relationship-aware without importing L6). v0.2 makes the location explicit. **Still not yet represented in the System Registry** — see §14.
+
+**Purpose**
+Provide a lightweight, kernel-level reference mechanism so that Phase-1 objects (e.g., NoteEvent, Voice) can participate in the first-class Relationship model (TDD §75, Phase 6) without those lower-layer modules needing to implement or import the full Relationship machinery (PredicateDefinition, scope, context, evidence — all L6 concepts).
+
+**Semantic definition**
+A RelationshipReference is a Value that names/points to a Relationship using stable identity, without resolving or embedding the full relationship object. Per the reference-only rule (§2), the type itself **must be defined at a layer both the holder and the target can legally reach** — i.e., at L1 (`music-core`), not inside `music-relationship` (L6). The actual `Relationship` structural type (predicate, scope, context, evidence — TDD §75) continues to live at L6 and is unaffected; only the *reference* type is relocated/clarified to L1.
+
+**Fields**
+```
+relationship_id: EntityID reference (opaque; resolves to a Relationship object at L6, not resolved at L1)
+```
+
+**Types**
+Value object (immutable) — deliberately not the Relationship entity itself, and deliberately not defined inside `music-relationship`.
+
+**Identity**
+None of its own; it is a pointer, not an identified thing. Its target (the Relationship it references) has identity via that Relationship's own EntityID.
+
+**Equality**
+Value equality on the referenced EntityID.
+
+**Invariants**
+```
+- MUST NOT embed relationship semantics (predicate, scope, context, evidence) at L1 — those belong to
+  the L6 Relationship object, resolved later
+- MUST NOT require the L6 music-relationship module to be loaded/available for L1–L4 objects to hold
+  a RelationshipReference
+- resolution (RelationshipReference → Relationship) MUST occur only in code at L6 or above
+```
+
+**Relationships**
+Held by NoteEvent, Voice, and other L1–L4 objects wishing to participate in later-resolved relationships (e.g., Tie, motif membership) without those lower layers depending upward on `music-relationship`.
+
+**Lifecycle**
+Constructed alongside the object that holds it; may go stale (dangling reference) if the target Relationship is deleted/tombstoned — staleness handling is a Relationship Specification (Deliverable G) concern, not defined here.
+
+**Serialization requirements**
+```
+- MUST serialize as an opaque identifier only — no inlined relationship payload
+```
+
+**Examples**
+```
+RelationshipReference("rel-tie-42")
+```
+
+**Tests**
+Architecture test: L1–L4 modules holding a RelationshipReference do not import `music-relationship` (L6).
+Invariant: reference carries no predicate/scope/context/evidence fields.
+
+**Layer / Dependency**
+L1 (music-core), revised location. Module dependency: EntityID (L0) only. Registry status: **not present — proposed addition, see §14.**
+
+---
+
+## 13. ProvenanceReference (Revised — Presence/Absence/Omission Formalized)
+
+**Status:** Revised in this revision to formalize a three-state presence model (item requested for v0.2). Module location (cross-cutting Provenance, ceiling L0–L1) is unchanged from v0.1 and remains consistent with the Dependency Spec. **Still not yet represented in the System Registry** — see §14.
+
+**Purpose**
+Provide a lightweight, kernel-level reference mechanism so that Phase-1 objects can carry lineage pointers (Law 10) without those objects needing to implement the full Provenance/Activity/Agent/Derivation model inline.
+
+**Semantic definition**
+A ProvenanceReference is a Value that points to a Provenance record (Activity + Agent + Derivation chain) by stable identity, without resolving or embedding that record. Per Dependency Spec §4, Provenance is a cross-cutting module with a dependency ceiling of L0–L1, and is explicitly permitted to be depended on by any layer needing lineage (L1+) — so, unlike RelationshipReference/VoiceReference, no relocation was needed here: any Phase-1 layer may import `music-provenance` directly for this type.
+
+**Fields — three-state presence model (v0.2)**
+```
+state: enum { present, absent, <field omitted entirely> }   -- "omitted" is not a valid state value;
+                                                               --  it is the invalid case of not
+                                                               --  representing the field at all
+provenance_id: EntityID reference   -- required and MUST resolve when state = present;
+                                       -- MUST NOT be populated when state = absent
+absence_reason: optional string     -- MAY be populated when state = absent, to record why
+                                       -- (e.g., "hand-authored Phase 1 test fixture")
+```
+
+The three conceptual states are:
+
+```
+present  → state=present; provenance_id is populated and MUST resolve to a valid,
+           non-dangling Provenance/Derivation record.
+absent   → state=absent; the field is explicitly represented, declaring that no
+           meaningful provenance is available or applicable for this object.
+           This is a valid, first-class assertion — not an error.
+omitted  → the provenance field is not represented in the serialized/in-memory
+           object at all. This is INVALID wherever the schema requires provenance
+           to be represented (which, per Law 10, includes every derived/generated
+           object). Omission MUST NOT be interpreted as, or silently treated
+           equivalent to, "absent."
+```
+
+**Types**
+Value object (immutable) — deliberately not the Provenance entity itself.
+
+**Identity**
+None of its own; pointer semantics when `state=present`. No identity when `state=absent`.
+
+**Equality**
+Value equality on `(state, provenance_id)`. Two `absent`-state references are equal regardless of `absence_reason` (the reason is documentation, not part of the value's identity-relevant content) — this is a modeling choice this document makes explicitly, open to revision by Deliverable K if it proves inadequate.
+
+**Invariants**
+```
+- state MUST always be explicitly represented as present or absent — omission is a schema violation,
+  not a valid third value of `state` (Law 22 / Law 24: partial information must be representable,
+  not implicit)
+- derived/generated objects (per Law 10) MUST use state=present with a resolving provenance_id
+- state=present with a provenance_id that does not resolve to a real record is an invariant
+  violation ("dangling reference"), not merely a warning
+- state=absent MUST NOT be used for any object produced by an Activity (import, transformation,
+  generation, analysis, etc.) — absence is reserved for genuinely provenance-free objects
+  (e.g., hand-authored Phase 1 fixtures, bootstrap/seed data)
+```
+
+**Relationships**
+Held by NoteEvent and any other derived/generated object. When `state=present`, resolves (at L1, per cross-cutting ceiling) to Provenance/Activity/Agent/Derivation records maintained by `music-provenance`.
+
+**Lifecycle**
+Constructed at the point an object is created/derived, with its state fixed at that point. Persists for the life of the object it's attached to, independent of whether the object itself is later revised (revisions get their own new provenance link, per Law 10 + TDD §109).
+
+**Serialization requirements**
+```
+- MUST serialize `state` explicitly — a serializer MUST NOT omit the provenance field and
+  MUST NOT infer "absent" from a missing field
+- when state=present, provenance_id MUST serialize as an opaque identifier only
+- when state=absent, provenance_id MUST NOT be serialized as present/populated
+- the present/absent distinction MUST survive a full serialize/deserialize round-trip —
+  losing this distinction is itself a Law 22 (Loss Is Explicit) violation
+```
+
+**Examples**
+```
+ProvenanceReference(state=present, provenance_id="prov-transpose-activity-7")
+ProvenanceReference(state=absent, absence_reason="hand-authored Phase 1 fixture")
+```
+
+**Tests**
+Invariant: every NoteEvent produced by a Transformation carries `state=present` with a non-dangling provenance_id.
+Invariant: no code path can construct an object with the provenance field entirely omitted where the schema requires it.
+Provenance test category: `state=present` reference resolves to a valid Activity/Agent/Derivation chain.
+Serialization: `state` (present vs. absent) survives round-trip without collapsing to a single "no provenance" case.
+
+**Layer / Dependency**
+Cross-cutting Provenance module, ceiling L0–L1, per Dependency Spec §4 (unchanged from v0.1). Registry status: **not present — proposed addition, see §14.**
+
+---
+
+## 14. Registry Synchronization Requirements
+
+Per the Registry-First Dependency Rule (Dependency Spec §6): *"Every inter-module dependency MUST be represented in the System Registry before implementation... If an implementation requires a dependency that is not currently represented in the Registry, that dependency MUST first be reviewed and added to the Registry."*
+
+None of the three reference types below currently have Registry rows. This document does **not** treat them as registered — it proposes the entries that would need to be added. Implementation MUST NOT proceed on any of these three types until the Registry is actually updated and this document's status is revised to reflect that.
+
+**Proposed Registry additions:**
+
+```
+VoiceReference | Value | Opaque L1 reference to a Voice (L4) by EntityID; lets NoteEvent (L3)
+  associate with a Voice without music-events importing music-containers | music-core |
+  EntityID | NoteEvent | 1 | Not Started | B (proposed) | Yes (proposed, not yet ratified) |
+  Value Contract | Invariant
+
+RelationshipReference | Value | Opaque L1 reference to a Relationship (L6) by EntityID; lets
+  L1-L4 objects be relationship-aware without importing music-relationship | music-core |
+  EntityID | NoteEvent, Voice, and other future L1-L4 holders | 1 (ref type) / 6 (resolved
+  semantics) | Not Started | B (proposed), G | Yes (proposed, not yet ratified) |
+  Value Contract | Invariant
+
+ProvenanceReference | Value | Three-state (present/absent/omitted-invalid) reference to a
+  Provenance/Derivation record; cross-cutting, ceiling L0-L1 | music-provenance | EntityID |
+  NoteEvent and all derived/generated objects | 1 | Not Started | B (proposed), K | Yes
+  (proposed, not yet ratified) | Value Contract | Invariant, Provenance
+```
+
+**Existing Registry row requiring amendment:**
+
+The current System Registry's `NoteEvent` row lists `Depends On: EntityID, TemporalAnchor, Duration, PitchIdentity, Voice, Provenance` — stating `Voice` as a direct dependency. Per this revision, that dependency is reference-only (via `VoiceReference`), not a module dependency on `music-containers`. The Registry row's "Depends On" column should be amended to distinguish:
+
+```
+Module deps: EntityID, TemporalAnchor, Duration, PitchIdentity, VoiceReference (L1),
+             RelationshipReference (L1), ProvenanceReference (cross-cutting)
+Reference-only (not module deps): Voice (L4, via VoiceReference), Relationship (L6, via
+             RelationshipReference)
+```
+
+This amendment is **proposed, not yet applied** — the System Registry document itself is out of scope for this ontology revision to edit directly; this section records what the amendment should say when the Registry is next updated.
+
+---
+
+## 15. Dependency Audit (Phase-1 Objects + Proposed References)
+
+Per-object audit against the Dependency & Layer Specification, as required for this revision.
+
+| Object | Layer | Semantic deps | Actual module deps | Reference-only deps | Cross-cutting deps | Authorized by Dep Spec? | Registry status |
+|---|---|---|---|---|---|---|---|
+| EntityID | L0 | none | none | none | none | Yes | Present |
+| Duration | L2 | none | none | none | none | Yes | Present |
+| MusicalTime | L2 | none | none | none | none | Yes | Present |
+| TimeSpan | L2 | MusicalTime | music-time (internal) | none | none | Yes | Present (boundary vocabulary provisional, §6) |
+| PitchIdentity | L2 | none | none | none | none | Yes | Present (field revised, §7 — Registry description should be checked) |
+| PitchSpelling | L2 | PitchIdentity | music-pitch (internal) | none | none | Yes | Present |
+| NoteEvent | L3 | MusicalTime, Duration, PitchIdentity, PitchSpelling, Voice, Relationship, Provenance | music-time, music-pitch (L2), music-core (L1, for VoiceReference/RelationshipReference) | Voice (L4, via VoiceReference), Relationship (L6, via RelationshipReference) | Provenance (cross-cutting) | Yes, as revised | Present but Depends-On column needs amendment (§14) |
+| Voice | L4 | NoteEvent (containment) | music-events (L3) | none | none | Yes (L4→L3 permitted) | Present |
+| VoiceReference | L1 (proposed) | EntityID | music-identity (L0) | Voice (L4) — by design, reference not module | none | Yes, under §2 rule | **Not present — proposed, §14** |
+| RelationshipReference | L1 (proposed relocation) | EntityID | music-identity (L0) | Relationship (L6) — by design | none | Yes, under §2 rule | **Not present — proposed, §14** |
+| ProvenanceReference | Cross-cutting (L0–L1 ceiling) | EntityID | music-provenance | none (Provenance module itself, not a "higher layer," per Dep Spec §4) | Provenance | Yes, per Dep Spec §4 table | **Not present — proposed, §14** |
+
+**Checked-for-and-not-found violations:** NoteEvent → notation, NoteEvent → theory, NoteEvent → performance, NoteEvent → persistence: no such dependencies exist in this document, proposed or otherwise. Pitch objects → tuning/framework concepts: PitchIdentity/PitchSpelling do not depend on TuningSystem or any Framework at Phase 1 (TuningSystem is L2, same layer, and is not referenced by these two objects in this document's scope — it is out of scope here per §1 and belongs to Deliverable D). Voice → NoteEvent: this is L4 → L3, permitted by layer order, not a violation.
+
+---
+
+## 16. Open Issues
+
+Unresolved items are listed here rather than resolved by implication. Two carry over from v0.1; none were silently closed by this revision.
+
+### 16.1 Entity vs Occurrence vs Event (carried over from v0.1)
+Still unresolved. Affects NoteEvent's category placement (§9) and, by extension, Structure/Occurrence relationships not yet documented in this Phase-1 pass. This revision does not attempt to resolve it — see NoteEvent's "BOUNDARY UNRESOLVED" status.
+
+### 16.2 Interpretation-family → Framework ordering (Dependency Spec §7.1, carried over)
+Does not directly touch Phase-1 kernel objects as revised here, but downstream Phase 4 documentation (Interpretation, Chord, Key) will need this resolved first. No change from v0.1.
+
+### 16.3 TimeSpan boundary vocabulary — provisional, not frozen (new in v0.2, see §6)
+The four-value enum (`closed/open/left_closed/right_closed`) is retained as a *working* vocabulary, not a frozen one. Deliverable C owns the authoritative version. This is a downgrade from v0.1's implicit treatment of the enum as fixed, not an upgrade in uncertainty — v0.1 had simply frozen more than TDD v4 actually mandates.
+
+### 16.4 PitchIdentity `token` representation and equivalence relation — RESOLVED (v0.3)
+§7's token representation remains implementation-internal/opaque (unchanged). The equivalence relation question is now resolved: PitchIdentity.equals() is strict token identity, permanent by design. Coarser equivalence (octave, enharmonic, or other theory-relative relations) is out of scope for PitchIdentity and is handled by PitchClass (music-pitch, implemented v0.3), which takes an explicit, caller-supplied equivalence relation rather than assuming one. This closes the deferral — no further Deliverable D work is needed for this specific question.
+
+### 16.5 Registry is not yet synchronized (new in v0.2)
+Three architectural primitives used in this document — `VoiceReference`, `RelationshipReference`, `ProvenanceReference` — are not yet Registry rows. Per Dependency Spec §6, this means they are **not yet authorized for implementation**, only proposed. This is a hard blocker for any code that would instantiate these types, not merely a documentation gap. See §14.
+
+### 16.6 ProvenanceReference equality over `absence_reason` — modeling choice flagged (new in v0.2)
+§13 chose to exclude `absence_reason` from value equality (two `absent` references are equal regardless of stated reason). This is a reasonable default but is explicitly flagged as a choice Deliverable K may revise, not a settled architectural conclusion.
+
+---
+
+## 17. Coverage Status
+
+```
+EntityID                Done (unchanged from v0.1)
+Duration                Done (unchanged from v0.1)
+MusicalTime             Done (unchanged from v0.1)
+TimeSpan                Done (boundary vocabulary rescoped as provisional, §6)
+PitchIdentity           Done (field contradiction fixed, §7)
+PitchSpelling           Done (unchanged from v0.1)
+NoteEvent               Done (Voice dependency fixed via VoiceReference, §9; category
+                          boundary still flagged unresolved, §16.1)
+Voice                   Done (cross-referenced to VoiceReference, §10)
+VoiceReference           Done — NEW in v0.2, proposed, NOT YET IN REGISTRY (§11, §14)
+RelationshipReference    Done — revised (module location corrected), NOT YET IN REGISTRY (§12, §14)
+ProvenanceReference      Done — revised (three-state presence model), NOT YET IN REGISTRY (§13, §14)
+```
+
+This document is **not frozen**. It remains blocked from full authorization by:
+- Registry synchronization for the three reference types (§14, §16.5);
+- resolution of the Entity/Occurrence/Event boundary (§16.1);
+- Deliverable C's authoritative TimeSpan boundary vocabulary (§16.3);
+- Deliverable D's PitchIdentity representation and equivalence model (§16.4, §7).
+
+Next pass: base categories (Entity, Value, Occurrence), then Phase 2 objects (Meter, MeterMap, Measure, Clef, Staff, Part, NotationPosition, Tempo, TempoMap, Dynamics, Articulation), once the Registry synchronization in §14 is actually carried out.

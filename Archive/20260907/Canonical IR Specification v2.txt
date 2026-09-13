@@ -1,0 +1,254 @@
+# CANONICAL IR SPECIFICATION (Deliverable N)
+**Status: Draft v0.2 — Not Frozen**
+Source: TDD v4 §122–125, §233–235; System Registry v2; Dependency & Layer Specification v2; Domain Ontology Specification v2
+Normative: Yes (pending Phase-0 freeze per TDD §260)
+Supersedes: v0.1 (internal-consistency review pass — no architectural changes; see revision note below)
+
+---
+
+## 0. Status Statement
+
+This is the internal-consistency-reviewed revision of Deliverable N. It is **not frozen**. No open issue was closed and no architectural decision was changed in this revision — v0.2 corrects wording, an incomplete example, and one imprecise layer citation identified during review. It remains blocked from full authorization by the same open items that block Domain Ontology Specification v0.2:
+
+- `VoiceReference`, `RelationshipReference`, `ProvenanceReference` are not yet Registry rows (Domain Spec §14, §16.5) — this document uses them as designed, but they are not yet implementation-authorized.
+- The Entity/Occurrence/Event category boundary is unresolved (Domain Spec §16.1) — this document treats `NoteEvent` under the same provisional Event-category treatment.
+- TimeSpan boundary vocabulary is provisional pending Deliverable C (Domain Spec §16.3).
+- This document identifies a new open issue (§2) concerning the Registry's stated dependencies for the `Canonical Musical Model / IR` row itself, which is not resolved here.
+
+---
+
+## 1. Purpose
+
+This document answers: **what is the authoritative machine representation of musical information?**
+
+The Canonical IR is the theory-neutral, serialization-independent, storage-independent **object graph** that represents musical material (TDD Law 14, Law 15; §122–123). It is:
+
+- **not** a wire format (JSON/protobuf/CBOR/XML/binary) — those are Serialization (Deliverable O, TDD §124–125);
+- **not** a database schema — that is Persistence (Deliverable P, TDD §127–128);
+- **not** a notation document, performance recording, or audio signal — those reference canonical objects but are not themselves canonical (Law 3/4/5);
+- **not** owned by any theory framework — frameworks consume it (Law 1, Law 11).
+
+The Canonical IR is what every layer above it (analysis, generation, transformation, I/O, applications) reads from and writes to. It is what Serialization converts to/from, and what Persistence stores. No other representation is authoritative.
+
+---
+
+## 2. Open Issue: What Module Is "The Canonical IR"?
+
+**Definitional note.** Everywhere in this document, "Canonical IR" names the authoritative object graph and its semantics — the model described in §§3–5 — never a single importable code module. This is stated up front because the Registry's current wording invites the opposite reading, which the rest of this section addresses.
+
+The System Registry lists `Canonical Musical Model / IR` at **module `music-core`, layer 1**, with `Depends On: Event, Structure, Relationship, Context, Provenance`.
+
+Taken literally as a code-import dependency, this contradicts the Dependency & Layer Specification (§2): `music-core` (L1) may not depend on `music-events` (L3), `music-structure` (L5), `music-relationship`/`music-context` (L6), because L1 must never depend on L3+.
+
+This document does not resolve that contradiction. It remains an unamended, open item in the Registry (see §12.1) regardless of anything stated below. Two readings are possible:
+
+1. **Compositional reading (working interpretation used only within this document):** "Canonical IR" is not a single importable module. It is the *emergent graph* formed when L1 base categories and reference types (`EntityID`, `Entity`, `Value`, `Occurrence`, `VoiceReference`, `RelationshipReference`, `ProvenanceReference` — see Domain Spec §1) are combined, at consumption time, with the higher-layer objects (Event, Structure, Relationship, Context, Interpretation, Provenance) that reference them. No single module imports all of it; applications (L9) and query code assemble the graph by resolving references across layers. Under this reading, the Registry's "Depends On" column for this row describes conceptual composition, not an import edge, and should be annotated as such.
+2. **Literal reading (rejected as currently stated):** `music-core` genuinely imports L3+ modules. This would violate Dependency Spec §2 outright and is not adopted here.
+
+**Working position for this draft:** reading 1 is used *only* to make the rest of this document internally coherent — it is an interpretive convenience for exposition, not an architectural resolution. The Registry row itself is unchanged and unamended, and the contradiction it currently states remains an open blocker (§12.1) until the Registry is actually updated with a "composition, not import" annotation. No implementation, and no other document, should treat this section as having settled the question. Until the Registry is amended, treat every graph diagram in this document as describing *composition*, not a module's import list.
+
+---
+
+## 3. What the Canonical IR Is Built From
+
+The IR is a graph of typed nodes (Entities, Values, Occurrences, Events, Containers, Structures) connected by typed edges (Relationships, and the lighter-weight reference types), annotated with Context, Interpretation, Evidence, Uncertainty, and Provenance. Categories, per TDD §9 / Domain Spec §1–§13:
+
+| Category | Role in the graph | Base layer |
+|---|---|---|
+| Entity | Identifiable conceptual object (has EntityID + Version) | L1 (base type); concrete entities at various layers |
+| Value | Immutable content, identity = value | L1 (base type); concrete values at various layers |
+| Occurrence | Situated instance of a conceptual object | L1 (base type); concrete occurrences at L5 |
+| Event | Occurrence tied to a temporal domain | L3 |
+| Container | Groups/organizes objects | L4 |
+| Structure | Higher-level semantic organization, references events without duplicating | L5 |
+| Relationship | First-class typed connection between graph nodes | L6 |
+| Assertion / Observation / Hypothesis / Interpretation | Claims about graph nodes, non-authoritative by default (Law 8) | L6 |
+| Context | Conditions under which a claim is evaluated | L6 |
+| Provenance | Lineage of derived nodes (Activity/Agent/Derivation) | Cross-cutting, L0–L1 ceiling |
+
+No category above is collapsed into another (Law 3–5, §9). A NoteEvent is never treated as a notation symbol, a performed sound, or a chord member merely for convenience.
+
+---
+
+## 4. Identity and Reference Model
+
+Every persistent node in the graph is addressed by `EntityID` (L0), which is stable across revisions and carries no positional meaning (Law 16). Two mechanisms connect nodes:
+
+- **Relationships (L6):** full first-class edges with predicate, scope, context, evidence, provenance (TDD §75). Used where the connection itself carries semantic weight requiring evaluation (e.g., `derived_from`, `resembles`, `contrasts_with`).
+- **Opaque references (L1, or cross-cutting with an L0–L1 ceiling for `ProvenanceReference`):** lightweight, EntityID-shaped pointers — `VoiceReference` (L1, Domain Spec §11), `RelationshipReference` (L1, Domain Spec §12), `ProvenanceReference` (cross-cutting, L0–L1 ceiling, Domain Spec §13) — used where a lower-layer node must point at a higher-layer node without importing that higher layer's module (Domain Spec §2, the reference-only dependency rule). These carry no embedded semantics of their target; resolution happens only at or above the target's own layer. All three remain proposed and are not yet Registry-authorized for implementation (§12.2).
+
+This is what makes the IR a **graph** rather than a tree of embedded objects: nodes point at each other by identity, never by embedding.
+
+---
+
+## 5. Phase-1 Canonical Graph (Concrete Instantiation)
+
+Per TDD §233 and Domain Spec §1, the Phase-1 slice of the graph consists of:
+
+```
+EntityID                    (L0)
+Duration                    (L2, Value)
+MusicalTime                 (L2, Value)
+TimeSpan                    (L2, Value)
+PitchIdentity                (L2, Value)
+PitchSpelling                 (L2, Value)
+NoteEvent                    (L3, Event — category BOUNDARY UNRESOLVED, Domain Spec §9)
+Voice                        (L4, Container)
+VoiceReference                (L1, Value — proposed, not yet in Registry)
+RelationshipReference          (L1, Value — proposed, not yet in Registry)
+ProvenanceReference             (Cross-cutting L0–L1, Value — proposed, not yet in Registry)
+```
+
+Node connectivity (Phase-1 slice):
+
+```
+NoteEvent
+  ├─ id                    : EntityID
+  ├─ temporal_anchor        : MusicalTime (via TemporalAnchor)
+  ├─ duration               : Duration
+  ├─ pitch                  : PitchIdentity
+  ├─ optional_pitch_spelling: PitchSpelling
+  ├─ optional_voice         : VoiceReference ──resolves-at-L4──▶ Voice
+  └─ provenance             : ProvenanceReference ──resolves-at-cross-cutting──▶ Provenance record
+```
+
+`Voice` itself holds NoteEvent membership via references/relationships, not by embedding NoteEvent objects (Domain Spec §10) — the graph edge is bidirectional in meaning (Voice groups notes; a note optionally names its voice) but implemented as two separate, independently-resolvable pointers, not a shared mutable structure.
+
+Later phases extend this same graph with Structure/Occurrence nodes (Motif, Phrase, Theme — reference events without duplicating, TDD §56–58), Relationship edges (Tie, motif membership), Context/Interpretation nodes (Chord, Key, ScaleDegree — attach to Sonority/Context, never mutate the underlying NoteEvents), and Provenance chains (Activity/Agent/Derivation) — all following the same identity-and-reference pattern established here, per Domain Spec §2.
+
+---
+
+## 6. Canonical IR Requirements (TDD §123) — Compliance Mapping
+
+| Requirement | How satisfied in this draft | Status |
+|---|---|---|
+| exact time | `MusicalTime` — exact rational, no float (Law 19) | Satisfied (Deliverable B) |
+| exact duration | `Duration` — exact rational, `>= 0` invariant | Satisfied (Deliverable B) |
+| multiple tuning systems | `PitchIdentity` makes no tuning assumption; `PitchRealization`/`TuningSystem` deferred | Deferred to Deliverable D |
+| multiple pitch representations | `PitchIdentity` / `PitchSpelling` / `PitchRealization` split (Law 18) | Partially satisfied — Realization deferred to D |
+| stable identity | `EntityID`, independent of position (Law 16) | Satisfied |
+| partial information | `ProvenanceReference` three-state model as worked example (Domain Spec §13); general partial-information model for pitch/other fields deferred | Partially satisfied |
+| relationships | L6 `Relationship` type; L1 `RelationshipReference` for lower-layer participation | Structurally defined; not yet implemented |
+| contexts | L6 `Context`, composable/nested (TDD §90–92) | Structurally defined; not yet implemented |
+| provenance | `ProvenanceReference` + Provenance/Activity/Agent/Derivation | Structurally defined (Domain Spec §13); not yet implemented |
+| versioning | `EntityID` + `Version` distinct (Domain Spec §3, TDD §16) | Structurally defined |
+| extensions | Core Extension Rule (TDD §231) — new categories only above the kernel | Policy defined, no mechanism implemented yet |
+
+Rows marked "Deferred" or "Partially satisfied" are not gaps in this document specifically — they are scoped to later deliverables (C, D, G, K) per the phased Phase-0 plan (TDD §260) and are listed here so the Canonical IR spec's own completeness can be tracked against them.
+
+---
+
+## 7. Uncertainty and Non-Authoritative Claims in the Graph
+
+The canonical graph itself (NoteEvent, Voice, etc.) holds only what is asserted as musical material. Claims *about* that material — key, chord, scale degree, motif membership — are separate node types (`Observation`, `Hypothesis`, `Interpretation`) that reference canonical nodes without altering them (Law 8, TDD §80–90). Multiple competing Interpretations may coexist pointing at the same Sonority; no promotion to canonical fact happens except through an explicit, tracked action (TDD §113, "Promotion").
+
+Consequence for this spec: **the canonical IR graph is never mutated by an analysis or interpretation process.** Analysis and interpretation only add new nodes (Observation/Hypothesis/Interpretation) and edges (Relationship, Evidence) pointing at existing canonical nodes.
+
+This refers specifically to mutation *by* an interpretation or analysis process — it does not conflict with the ordinary entity lifecycle. A NoteEvent (or other Entity-category node) may still be revised through its own defined lifecycle operations (creation → revision → derivation → supersession → deletion/tombstoning; Domain Spec §9 "Lifecycle"; TDD §15–16), producing a new `Version` under the same `EntityID`. What is prohibited is a downstream Interpretation or Analysis process silently rewriting canonical fields as a side effect of producing a claim about them. Versioning proper is addressed in §8.
+
+---
+
+## 8. Versioning Within the Graph
+
+Identity (`EntityID`) and revision (`Version`) are distinct (Domain Spec §3, TDD §16). The canonical IR does not have a single global version/snapshot number; each Entity-category node is independently versioned. Where a coherent multi-node snapshot is needed (e.g., "the state of this Work as of commit X"), that is a Corpus/Work-level concern (TDD §226–228), not a canonical-IR-level concern, and is out of scope for this document.
+
+Derived nodes (outputs of Transformation, Generation) receive **new** identities with `ProvenanceReference(state=present)` pointing back to their sources (Law 20; Domain Spec §13) — they are never revisions of their input nodes.
+
+---
+
+## 9. What Is Explicitly Excluded From the Canonical IR
+
+Per Law 3/4/5 and TDD §60–64, the following are **not** canonical IR nodes, even though they reference canonical IR nodes:
+
+- Notation documents (engraving, layout, graphic coordinates, editorial markings) — Notation Document Model, L9.
+- Performance realizations (actual onset/release/velocity/timing deviation) — `PerformanceEvent`, L9, references NoteEvent via a 0..n `realizes` relationship (TDD §62), never redefines it.
+- Recordings / audio signal data — `Recording`/`AudioTime`, L9.
+- Any serialized byte stream — Deliverable O.
+- Any storage row/document — Deliverable P.
+
+A conversion or query that treats any of the above as if it were the canonical fact is a Dependency Spec §5.2 violation ("MUST NOT redefine Canonical Events").
+
+---
+
+## 10. Worked Example: C4–E4–G4 Triad
+
+Following TDD §214/§234, the canonical graph for a C major triad (three quarter notes). This example is deliberately abbreviated: `optional_pitch_spelling` and `optional_voice` are omitted from N1–N3 because they are legitimately optional and add nothing to the point being illustrated. `provenance` is **not** optional — Domain Spec §13 requires `state` to always be explicit, never silently omitted — so it is shown explicitly here, using the `absent` state Domain Spec §13 reserves for exactly this kind of hand-authored fixture.
+
+As with every use of `ProvenanceReference`, `VoiceReference`, and `RelationshipReference` in this document, this example illustrates the design as specified in Domain Spec §§11–13; it is not an authorization to implement — see §12.2.
+
+```
+NoteEvent N1: { id: "note-1", temporal_anchor: 0/1, duration: 1/4, pitch: PitchIdentity(C4),
+                provenance: ProvenanceReference(state=absent, absence_reason="hand-authored example fixture") }
+NoteEvent N2: { id: "note-2", temporal_anchor: 0/1, duration: 1/4, pitch: PitchIdentity(E4),
+                provenance: ProvenanceReference(state=absent, absence_reason="hand-authored example fixture") }
+NoteEvent N3: { id: "note-3", temporal_anchor: 0/1, duration: 1/4, pitch: PitchIdentity(G4),
+                provenance: ProvenanceReference(state=absent, absence_reason="hand-authored example fixture") }
+```
+
+These three nodes are the entirety of the canonical fact. Everything else is derived, non-authoritative, and attaches by reference:
+
+```
+Interval(N1,N2)     -- derived, L6 semantic layer
+Interval(N2,N3)     -- derived
+Sonority S1 = {N1,N2,N3}   -- derived, selection semantics explicit (TDD §68)
+
+Interpretation A: { target: S1, claim: "C major triad", framework: tonal-harmony }
+Interpretation B: { target: S1, claim: "VI in E minor", framework: tonal-harmony, context: E-minor }
+```
+
+Both interpretations coexist. N1/N2/N3 are never modified by either.
+
+Transposition (+P5) produces new identities with provenance, never mutates N1–N3. Unlike N1–N3, these are *derived* nodes — Domain Spec §13 requires `state=present` with a resolving `provenance_id` for any object produced by an Activity, so `absent` is not available here (this is a per-object requirement, not a claim that every canonical node must carry present provenance):
+
+```
+NoteEvent N4: { id: "note-4", pitch: PitchIdentity(G4),
+                provenance: ProvenanceReference(state=present, provenance_id="prov-transpose-1"), derived_from: N1 }
+NoteEvent N5: { id: "note-5", pitch: PitchIdentity(B4),
+                provenance: ProvenanceReference(state=present, provenance_id="prov-transpose-1"), derived_from: N2 }
+NoteEvent N6: { id: "note-6", pitch: PitchIdentity(D5),
+                provenance: ProvenanceReference(state=present, provenance_id="prov-transpose-1"), derived_from: N3 }
+```
+
+(`prov-transpose-1` here would resolve, at the cross-cutting Provenance layer, to a Derivation record naming the `Transposition(+P5)` activity — the record itself is outside this document's scope; see Deliverable K.)
+
+---
+
+## 11. Extension Mechanism
+
+New musical concepts enter the canonical graph only under the Core Extension Rule (TDD §231): framework-neutral, required by multiple subsystems, not representable as an extension, stable semantics, no theory leakage. The default path for a new concept is **not** a new canonical node type — it is one of:
+
+- a new `Relationship` predicate (extensible vocabulary, TDD §77);
+- a new `Interpretation`/`Annotation` type referencing existing canonical nodes;
+- a new `Structure`/`Occurrence` pair referencing existing events without duplicating them.
+
+Only if none of these fit, and the five criteria in TDD §231 are met, does a new base-category node enter L1–L4.
+
+---
+
+## 12. Open Issues
+
+1. **§2 — Canonical IR module-dependency conflict.** The Registry's literal "Depends On" list for `Canonical Musical Model / IR` conflicts with strict layer ordering. Working interpretation (compositional, not import) adopted here; Registry annotation still needed.
+2. **Reference types not yet registered** (Domain Spec §14, §16.5) — `VoiceReference`, `RelationshipReference`, `ProvenanceReference` are used throughout §5 and §10 but remain implementation-unauthorized until Registry sync.
+3. **NoteEvent category boundary unresolved** (Domain Spec §16.1) — affects whether "Event" is the correct permanent category for the canonical graph's core node, or whether Entity/Occurrence absorbs it.
+4. **TimeSpan boundary vocabulary provisional** (Domain Spec §16.3) — affects how Occurrence/Structure regions are represented in the graph once Structures (§5, later phases) are added.
+5. **Partial-information model beyond ProvenanceReference is unscoped.** §6 flags that pitch/other-field partial knowledge (TDD §121, "pitch = unknown / pitch_candidates = [...]") has no worked node model yet in this document — needed before Phase 4 (Observation/Hypothesis) can be specified against this IR.
+
+---
+
+## 13. Coverage Status
+
+```
+Purpose / scope                    Done
+Module-dependency reading (§2)     Done — open issue, not resolved
+Category graph (§3)                Done
+Identity/reference model (§4)      Done
+Phase-1 concrete graph (§5)        Done
+§123 requirement mapping (§6)      Done — several rows deferred to later deliverables
+Uncertainty/non-authority (§7)     Done
+Versioning (§8)                    Done
+Exclusions (§9)                    Done
+Worked example (§10)               Done
+Extension mechanism (§11)          Done
+```
+
+Not frozen. Blocked on: Registry synchronization (§12.2), Entity/Occurrence/Event resolution (§12.3), Deliverable C boundary vocabulary (§12.4), and general partial-information model for non-provenance fields (§12.5).

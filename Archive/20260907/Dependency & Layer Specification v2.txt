@@ -1,0 +1,234 @@
+# DEPENDENCY & LAYER SPECIFICATION
+
+**Document:** Phase-0 Deliverable — Dependency Direction
+**Source:** TDD v4 (Sec 190–192), System Registry v2
+**Status:** Draft v1.1
+**Normative:** Yes
+
+---
+
+## 0. Status Statement
+
+This is **Phase-0 Dependency Direction Draft v1.1**. It is suitable for inclusion in the project file as the working dependency contract.
+
+It is **not yet architecture-frozen**. Two open issues (§7) remain unresolved: the Interpretation-family → Framework dependency, and the Theory-layer → Corpus dependency. No implementation may introduce either forward dependency until its resolution is recorded in the Domain Ontology Specification and the System Registry is updated accordingly.
+
+Once both open issues are resolved and the Registry is synchronized with this document, this specification can become the frozen dependency contract.
+
+---
+
+## 1. Layer Order
+
+```
+L0  Identity
+L1  Core
+L2  Time / Pitch
+L3  Events
+L4  Containers
+L5  Structures
+L6  Context / Semantics
+L7  Theory
+L8  Analysis / Generation / Transformation
+L9  I/O / Applications
+```
+
+Cross-cutting (attach to any layer, dependency direction governed by §4, not by layer order): Provenance, Validation, Security, Observability, Persistence.
+
+---
+
+## 2. Dependency Rule
+
+A module in numbered layer **N** may depend only on modules in numbered layers **0..N**, plus any cross-cutting module it is permitted to depend on under §4.
+
+A module in numbered layer **N** shall never depend on any module in numbered layers **N+1..9**.
+
+### 2.1 Numbered layers depending on cross-cutting modules
+A numbered layer MAY depend on a cross-cutting module, subject to that module's individual restriction stated in §4. §4's per-module ceiling governs; the general permission in this paragraph does not override it.
+
+### 2.2 Cross-cutting modules' own dependencies
+A cross-cutting module MUST obey the dependency ceiling stated for it in §4. A cross-cutting module MUST NOT depend on any numbered layer above its stated ceiling. A cross-cutting module MUST NOT introduce a forward dependency into a higher-numbered domain layer merely because it is "cross-cutting" — cross-cutting describes *who may use it*, not *what it may use*.
+
+### 2.3 Precedence
+Where §4 states a dependency ceiling for a specific cross-cutting module, that restriction takes precedence over the general statements in §2.1–2.2.
+
+### 2.4 Persistence
+Persistence is outside the numbered domain stack entirely and is I/O-adjacent. It is not "layer 9" and not exempt from restriction — see §4 and §5.
+
+---
+
+## 3. Layer Contents (module → layer)
+
+| Layer | Modules |
+|---|---|
+| L0 Identity | music-identity (EntityID, Version, VersionModel, SchemaVersion) |
+| L1 Core | music-core (Entity, Value, Occurrence, IdentityEquality, ValueEquality, StructuralEquality, SemanticEquality, CanonicalEquality, Canonical Musical Model/IR) |
+| L2 Time / Pitch | music-time, music-pitch |
+| L3 Events | music-events (Event, NoteEvent, RestEvent, ControlEvent, Tie, Slur, Articulation, Dynamics, Instrument\*, InstrumentCapability\*) |
+| L4 Containers | music-containers (Container, Voice, Layer, Staff, Part, Measure, Phrase-container, Section, Movement, Work, Edition, Arrangement, Revision, SourceVariant) |
+| L5 Structures | music-structure (Structure, Motif, MotifOccurrence, Figure, Theme, ThemeOccurrence, Cadence, PhraseOccurrence) |
+| L6 Context / Semantics | music-context, music-semantics (Context, Interval, Sonority, Scale, ScaleDegree, Contour, RhythmicPattern), music-relationship, music-interpretation (Assertion, Observation, Hypothesis, Interpretation, Evidence, Annotation, Chord, Key, ScholarlyAnnotation) |
+| L7 Theory | music-theory, music-rules (Framework, Rule, Constraint, Preference, Heuristic, Tendency, StatisticalModel, StyleModel, Species/Common-Practice/advanced frameworks) |
+| L8 Analysis / Generation / Transformation | music-analysis, music-generation, music-transform (Analyzer, Procedure, Candidate, Intent, GenerationPlan, Generator, Transformation and all subtypes) |
+| L9 I/O / Applications | music-io, music-notation, music-performance (audio/perf-time pieces), music-corpus\*, Query interface, Applications |
+
+`*` = provisional placement — see §4a.
+
+---
+
+## 4. Cross-Cutting Modules
+
+| Module | Dependency ceiling | May be depended on by | Notes |
+|---|---|---|---|
+| Provenance (Provenance, Activity, Agent, Derivation, ProvenanceGraph, AuditEvent, ReproducibilityRecord) | L0–L1 only | Any layer needing lineage (L1+) | Provenance MUST NOT depend on any layer above Core. No layer's own semantics may depend on Provenance to define correctness of that layer's meaning — Provenance records lineage, it does not define domain state. |
+| Observability (logs, traces, metrics, correlation/analysis/generation/provenance IDs) | L0 (EntityID) only | Any layer | MUST NOT alter domain semantics (TDD §208). |
+| Security (Plugin Contract, sandboxing/capability APIs, Query Safety Limits) | L0–L1 only | L7–L9 (plugins, queries) | MUST NOT be bypassed by any layer it governs. |
+| Validation | Own layer + all lower layers | All layers | Special case: a validator for layer N necessarily understands layer N's semantics, so it depends on layer N plus everything layer N is allowed to depend on. It MUST NOT depend upward. |
+| Persistence (repositories, Cache) | Canonical IR / L1 only | I/O and application code outside the numbered stack | Outside numbered stack. MUST NEVER be imported by L0–L8. |
+
+No cross-cutting module may become an uncontrolled escape hatch around the layer architecture. A dependency is not exempt from §2 merely by being routed through a cross-cutting module.
+
+### 4a. Provisional Layer Placements
+
+The following placements are **provisional** — kept as-is for this draft, not yet confirmed by the Domain Ontology Specification, and flagged because they are consequential dependency-magnet candidates:
+
+- **Instrument / InstrumentCapability (L3):** Registry locates these at `music-events / music-performance` and `music-events` respectively. Retained at L3 here. Provisional because Instrument is referenced by Events, Performance, Generation constraints, and Notation, and is a plausible candidate for its own layer or module boundary once those relationships are fully specified.
+- **music-corpus (L9):** Retained at L9 here. Provisional because Theory-layer objects (Tendency, StatisticalModel, StyleModel — see §7 Open Issue 2) already depend on Corpus in the Registry, which is a forward dependency under the current layer order. The eventual module boundary must prevent corpus/statistical infrastructure from leaking upward into the canonical domain kernel; where exactly Corpus sits, and how Theory consumes it without violating §2, is not yet settled.
+
+Not every uncertainty is elevated to provisional status — only these two, because they are the ones with concrete, consequential dependency conflicts or magnet risk. Everything else in §3 is treated as confirmed for this draft.
+
+---
+
+## 5. Explicit Prohibitions (TDD §192, §193, and this revision)
+
+### 5.1 Layer leakage (existing)
+```
+Core        MUST NOT import Theory
+Pitch       MUST NOT import Harmony/any Framework
+Time        MUST NOT import Notation
+Events      MUST NOT import Structures, Context, Theory, Analysis, I/O
+Containers  MUST NOT import Structures, Context, Theory, Analysis, I/O
+Domain (L0–L8) MUST NOT import Persistence
+Domain (L0–L8) MUST NOT import SQL / storage tech
+Plugins     MUST NOT bypass capability/security boundaries
+```
+
+### 5.2 Canonical IR authority
+The Canonical Musical Model / IR (L1) is the authoritative theory-neutral representation of musical content. Derived layers (L5–L9) may interpret, analyze, transform, render, project, or generate from canonical content, but MUST NOT silently redefine the semantics of canonical objects. Concretely:
+
+```
+Theory      MUST NOT mutate Canonical Events
+Notation    MUST NOT redefine Canonical Events
+Performance MUST NOT redefine Canonical Events
+```
+
+### 5.3 Semantic-leakage prohibitions (new in v1.1)
+```
+Analysis MUST NOT introduce theory-specific semantics into the Canonical IR.
+Generation MUST NOT require a specific Theory Framework unless that framework is
+    explicitly selected by the GenerationPlan or equivalent configuration.
+Query projections MUST NOT become authoritative domain state.
+```
+
+These protect the same central principle as §5.2: the Canonical Musical Model / IR is theory-neutral; analysis produces derived interpretations/features/results, not canonical facts; generation may consume frameworks, constraints, preferences, and models, but only ones explicitly selected for the task, not ones implicitly baked into the generation pipeline; query Views are projections and must never become a second authoritative representation of the musical domain. Framework-specific interpretation belongs in L6/L7 (context/semantics/theory), never embedded into L1–L3 canonical event semantics.
+
+---
+
+## 6. Registry-First Dependency Rule
+
+The System Registry is an architectural authority, not merely documentation.
+
+> Every inter-module dependency MUST be represented in the System Registry before implementation.
+
+> Architecture tests SHALL reject inter-module dependencies that are not authorized by the System Registry.
+
+Undocumented sibling coupling is prohibited, at any layer, including within the same layer.
+
+If an implementation requires a dependency that is not currently represented in the Registry, that dependency MUST first be reviewed and added to the Registry. It MUST NOT be introduced informally in code first and reconciled with the Registry later.
+
+---
+
+## 7. Open Issues
+
+The purpose of this section is to identify real architectural contradictions between the layer model (§1) and the current System Registry — not to license temporary undocumented forward coupling. Nothing in this section authorizes an implementation to introduce the dependencies described below.
+
+### 7.1 Open Issue 1 — Interpretation-family ↔ Framework Ordering
+
+Registry lists `Interpretation` (L6, music-interpretation) as depending on `Framework` (L7, music-theory). Under strict §2 this is a forward dependency (L6 → L7) and is disallowed.
+
+The same root cause affects other music-interpretation types that reference Framework: `Chord` (depends on Sonority, Framework, Context) and `Key` (depends on Context, Framework), and by extension `ScaleDegree` (depends on Scale, Context, Framework). `Interpretation` remains the primary documented example; these are the same contradiction, not separate issues.
+
+Resolution options:
+
+1. Interpretation (and Chord/Key/ScaleDegree) depend only on a `FrameworkReference` (ID/version), not the Framework module itself — the reference lives at L6, resolution happens at L7+.
+2. Move Framework identity/metadata (not Rule/Constraint evaluation) down to L6, keep Rule/Constraint/Evaluation at L7.
+3. Collapse L6/L7 into one layer ("Context/Semantics/Theory") with internal ordering enforced by sub-rules instead of the master stack.
+
+**Guardrail:** No implementation shall establish the disputed Interpretation-family → Framework dependency until the resolution is recorded in the Domain Ontology Specification and the System Registry is updated accordingly.
+
+Not resolved in this draft — flag for Domain Ontology Specification (Deliverable B).
+
+### 7.2 Open Issue 2 — Theory (L7) ↔ Corpus (L9) Ordering
+
+Registry lists `Tendency`, `StatisticalModel`, and `StyleModel` (all L7, music-theory) as depending on `Corpus` / `Corpus Statistics` (L9, music-corpus). Under strict §2 this is a forward dependency (L7 → L9) and is disallowed.
+
+This is the concrete manifestation of the risk flagged in §4a for the provisional `music-corpus` placement: Theory-layer statistical objects already depend on corpus infrastructure in the Registry as written.
+
+Resolution options:
+
+1. Introduce a `CorpusStatisticReference` (or equivalent derived-value handoff) that Theory consumes without depending on the Corpus module itself — Corpus pushes derived statistics down, Theory does not pull the module up.
+2. Move the statistical-ingestion boundary (not corpus ingestion/normalization/indexing) to a lower layer shared by Theory and Corpus.
+3. Treat Corpus as a peer/cross-cutting provider of derived, non-authoritative statistical evidence rather than a numbered layer, similar in spirit to Provenance.
+
+**Guardrail:** No implementation shall establish the Theory → Corpus dependency until the resolution is recorded in the Domain Ontology Specification and the System Registry is updated accordingly.
+
+Not resolved in this draft — flag for Domain Ontology Specification (Deliverable B) and Corpus Architecture review.
+
+---
+
+## 8. Tightened L9 Description
+
+L9 is the external/application-facing layer. Being in L9 does not make any of the following authoritative over the canonical domain model (L1):
+
+| Sub-area | Modules | Role |
+|---|---|---|
+| I/O adapters | music-io (MIDI/MusicXML/MEI/ABC importers & renderers, AudioAnalyzer, OCRImporter, LossModel) | Convert between external formats and Canonical IR. Never define domain semantics (TDD Law 14). |
+| Notation / rendering | music-notation (Score Model, Notation Document Model, NotationRenderer) | Representation/rendering layer only. Non-authoritative over Canonical Events (§5.2). |
+| Performance realization | music-performance (Performance, PerformanceEvent, AudioRenderer) | Realization layer only. Non-authoritative over Canonical Events (§5.2). |
+| Corpus / statistical infrastructure | music-corpus\* | Derived, non-authoritative statistical knowledge (TDD §180, §225). Provisional placement — see §4a, §7.2. |
+| Query interfaces | Query Interface, PatternMatching, SimilarityModel, SearchResult, Views | Projections over Canonical IR. MUST NOT become authoritative domain state (§5.3). |
+| Applications | Composition, Practice, Ear Training, Analysis, Corpus, OCR, Audio, Notation, Performance apps | Consume domain services. MUST NOT implement duplicate music semantics (TDD §194). |
+
+---
+
+## 9. Architecture Test Mapping
+
+| Test | Enforces | Status |
+|---|---|---|
+| core cannot import theory | L1 ⇏ L7 | Planned |
+| pitch cannot import harmony/frameworks | L2 ⇏ L7 | Planned |
+| time cannot import notation | L2 ⇏ L9 | Planned |
+| domain cannot import persistence | L0–L8 ⇏ Persistence | Planned |
+| domain cannot import SQL/storage tech | L0–L8 ⇏ storage tech | Planned |
+| theory cannot mutate canonical events | L7 write-access to L1–L3 objects = forbidden | Planned |
+| notation cannot redefine canonical events | L9 (notation) write/redefine access to L1–L3 semantics = forbidden | Planned |
+| performance cannot redefine canonical events | L9 (performance) write/redefine access to L1–L3 semantics = forbidden | Planned |
+| analysis cannot introduce theory-specific semantics into Canonical IR | L8 (analysis) writes to L1 restricted to theory-neutral fields | Planned |
+| query projections cannot become authoritative domain state | Query/View modules restricted to read/derive, no canonical mutation | Planned |
+| plugins cannot bypass capability/security boundaries | L7–L9 plugin code ⇏ Security bypass | Planned |
+| undocumented inter-module dependencies are rejected | Any dependency edge not present in System Registry fails CI | Planned |
+| Interpretation-family → Framework dependency is rejected until authorized | L6 (music-interpretation) ⇏ L7 (Framework) until §7.1 resolved | Planned |
+| Theory → Corpus dependency is rejected until authorized | L7 (Tendency/StatisticalModel/StyleModel) ⇏ L9 (Corpus) until §7.2 resolved | Planned |
+
+Each row is a planned CI check, not an existing one — no modules exist yet to test.
+
+---
+
+## 10. Normative Language Key
+
+- **MUST / SHALL** — mandatory architectural requirement.
+- **SHOULD** — recommendation, deviation requires justification.
+- **MAY** — permitted, not required.
+- **provisional** — architectural placement not yet frozen; retained as working default but subject to change by the Domain Ontology Specification (§4a).
+- **open issue** — unresolved decision that blocks final freeze; no implementation may act as if it were resolved (§7).
+
+This document does not elevate illustrative Registry examples (rows marked "Reference Concept" / "No" under Normative? in the Registry) to new normative requirements beyond what the Registry already states.

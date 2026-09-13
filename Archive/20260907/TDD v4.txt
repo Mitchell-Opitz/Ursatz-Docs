@@ -1,0 +1,5831 @@
+# TECHNICAL DESIGN DOCUMENT V4
+
+# General-Purpose Computational Music Platform
+
+## Theory-Neutral Musical Representation, Semantics, Temporal Modeling, Interpretation, Analysis, Transformation, Generation, Performance, Notation, Corpus, and I/O
+
+**Document Status:** Pre-Implementation Architecture
+**Revision:** 4.0
+**Supersedes:** V3
+**Classification:** Foundational Architecture / Implementation Contract
+**Primary Objective:** Define a theory-neutral computational foundation capable of representing, observing, interpreting, analyzing, transforming, generating, performing, rendering, importing, exporting, querying, and studying musical material without allowing any particular theory, notation system, storage technology, or generation technology to define the underlying musical domain.
+
+---
+
+# 1. Executive Summary
+
+The platform shall be designed as a **general-purpose computational music system**, not as a software implementation of any particular theory of music.
+
+The foundational architecture shall represent musical material independently of:
+
+* music theory
+* notation system
+* instrument
+* tuning system
+* performance
+* recording
+* database
+* serialization format
+* rendering technology
+* analytical methodology
+* machine-learning architecture
+* generation algorithm
+* programming language
+
+The central architectural principle is:
+
+> **The system shall distinguish what musical material is represented from what is observed about it, what is inferred from it, how it is interpreted, under which framework it is interpreted, how it is transformed, and how it is ultimately rendered or performed.**
+
+The architecture therefore shall contain distinct but interoperable domains:
+
+```text
+SOURCE / WORLD
+    │
+    ├── notation/document
+    ├── performance
+    └── recording
+            │
+            ▼
+       OBSERVATIONS
+            │
+            ▼
+   CANONICAL MUSICAL MODEL
+            │
+      ┌─────┼─────┐
+      ▼     ▼     ▼
+   events structures relationships
+      │     │     │
+      └─────┼─────┘
+            ▼
+        CONTEXT
+            │
+            ▼
+      INTERPRETATIONS
+            │
+            ▼
+      THEORY / KNOWLEDGE
+            │
+       ┌────┼────┐
+       ▼    ▼    ▼
+    ANALYSIS GENERATION TRANSFORMATION
+       │    │    │
+       └────┼────┘
+            ▼
+    CANONICAL MUSICAL MODEL
+            │
+      ┌─────┼──────────┐
+      ▼     ▼          ▼
+   NOTATION PERFORMANCE AUDIO
+```
+
+No layer above the canonical musical model may silently redefine the canonical model.
+
+No interpretation may silently become authoritative musical fact.
+
+No uncertainty may be discarded merely because a downstream subsystem prefers a single answer.
+
+No generated object may lose its lineage.
+
+No external representation may become the domain model merely because it is convenient to serialize.
+
+---
+
+# 2. Architectural Objective
+
+The platform shall optimize for:
+
+1. semantic correctness
+2. theory neutrality
+3. representational completeness
+4. extensibility
+5. provenance
+6. uncertainty preservation
+7. explainability
+8. reproducibility
+9. interoperability
+10. testability
+11. long-term maintainability
+12. controlled performance optimization
+
+The initial implementation shall prioritize semantic correctness over maximum throughput.
+
+Optimization shall be evidence-driven.
+
+---
+
+# 3. Architectural Thesis
+
+The platform shall explicitly distinguish:
+
+```text
+Musical Material
+Notation
+Performance
+Recording
+Observation
+Interpretation
+Theory
+Rule
+Constraint
+Preference
+Heuristic
+Statistical Model
+Transformation
+Generation
+```
+
+These concepts may refer to one another but shall not be collapsed into one universal object.
+
+The architecture shall therefore avoid statements such as:
+
+```text
+Note = notation symbol
+Note = MIDI message
+Note = performed sound
+Note = scale degree
+Note = chord member
+```
+
+Instead:
+
+```text
+Musical occurrence
+    ↓
+may be notated as
+    ↓
+may be performed as
+    ↓
+may be recorded as
+    ↓
+may be observed as
+    ↓
+may be interpreted as
+```
+
+---
+
+# 4. Foundational Laws
+
+The following laws are normative.
+
+## Law 1 — Musical Material Is Not Theory
+
+A theoretical framework may interpret musical material but shall not define the existence of the material.
+
+## Law 2 — Representation Is Not Interpretation
+
+A representation of an event does not imply what the event means.
+
+## Law 3 — Notation Is Not Musical Reality
+
+Notation is a representation/documentation of musical material.
+
+## Law 4 — Performance Is Not Symbolic Content
+
+Performance realization may differ from symbolic musical content.
+
+## Law 5 — Recording Is Not Performance Semantics
+
+A recording is captured signal/data. Musical meaning derived from it is an observation or interpretation.
+
+## Law 6 — Relationships Are First-Class
+
+Important relationships shall not be encoded solely as ad hoc fields.
+
+## Law 7 — Context Matters
+
+Claims whose validity depends on context shall explicitly identify that context.
+
+## Law 8 — Interpretation Is Non-Authoritative by Default
+
+Analytical claims shall not silently overwrite source musical material.
+
+## Law 9 — Uncertainty Is Data
+
+Unknown, ambiguous, competing, and probabilistic information shall remain representable.
+
+## Law 10 — Provenance Is Preserved
+
+Derived objects shall retain sufficient lineage to determine how they were produced.
+
+## Law 11 — Theory Is Pluggable
+
+The foundational kernel shall not depend on any particular music-theoretical framework.
+
+## Law 12 — Rules and Statistics Are Different
+
+A statistical tendency shall never automatically become a theoretical rule.
+
+## Law 13 — Constraints and Preferences Are Different
+
+A preference may rank candidates without invalidating them.
+
+## Law 14 — External Formats Are Adapters
+
+MIDI, MusicXML, ABC, MEI, audio formats, databases, JSON, protobuf, and similar systems shall not define the canonical domain.
+
+## Law 15 — Storage Is Not Domain Semantics
+
+A relational schema, graph database, document store, or event store shall remain replaceable.
+
+## Law 16 — Identity Is Not Position
+
+Array index, measure number, file offset, or database row number shall never be the sole identity of a persistent musical object.
+
+## Law 17 — Occurrence Is Distinct from Conceptual Identity
+
+A recurring motif and one occurrence of that motif are different concepts.
+
+## Law 18 — Written and Sounding Pitch Are Distinct
+
+Instrument transposition shall not be embedded into the universal definition of pitch.
+
+## Law 19 — Symbolic Time Is Exact
+
+Authoritative symbolic temporal values shall not depend on floating-point arithmetic.
+
+## Law 20 — Transformations Do Not Mutate Their Inputs
+
+Transformations shall normally create new versions or derived objects.
+
+## Law 21 — Stochastic Processes Are Reproducible
+
+Random generation shall support explicit seeds and reproducibility metadata.
+
+## Law 22 — Loss Is Explicit
+
+Conversions that cannot preserve information shall report the loss.
+
+## Law 23 — Canonicalization Is Not Equality
+
+Two objects may canonicalize to equivalent forms without being identical entities.
+
+## Law 24 — Partial Information Is Valid Information
+
+An incomplete object shall be representable when the domain permits incomplete knowledge.
+
+## Law 25 — The Foundation Remains Small
+
+New concepts shall be introduced above the kernel whenever possible.
+
+---
+
+# 5. Domain Boundaries
+
+The system shall distinguish at least the following domains:
+
+```text
+5.1 World / Source Domain
+5.2 Digital Artifact Domain
+5.3 Musical Domain
+5.4 Representation Domain
+5.5 Observation Domain
+5.6 Interpretation Domain
+5.7 Theory / Knowledge Domain
+5.8 Transformation Domain
+5.9 Generation Domain
+5.10 Performance Domain
+5.11 Query Domain
+5.12 Corpus Domain
+5.13 Persistence Domain
+```
+
+These boundaries shall be architectural rather than merely organizational.
+
+---
+
+# 6. World and Source Domain
+
+A source is an external artifact or phenomenon from which information is obtained.
+
+Examples:
+
+```text
+manuscript
+printed score
+digital score
+recording
+live performance
+MIDI stream
+audio file
+human annotation
+corpus
+database
+external analysis
+```
+
+A source shall have identity and provenance.
+
+A source shall not be assumed to contain complete or authoritative information.
+
+---
+
+# 7. Digital Artifact
+
+A DigitalArtifact represents an external digital object.
+
+Examples:
+
+```text
+PDF
+MusicXML document
+MIDI file
+MEI document
+WAV file
+JSON document
+image
+database export
+```
+
+Digital artifacts shall remain distinguishable from the musical material represented by them.
+
+---
+
+# 8. Canonical Musical Domain
+
+The canonical musical domain represents musical material independently of serialization.
+
+It shall contain concepts such as:
+
+```text
+Event
+Occurrence
+Container
+Structure
+Pitch
+Duration
+MusicalTime
+Voice
+Instrument
+Relationship
+```
+
+The canonical domain shall not require JSON, XML, SQL, MIDI, or any other storage representation.
+
+---
+
+# 9. Domain Object Categories
+
+The architecture shall use the following conceptual categories.
+
+```text
+Entity
+Value
+Occurrence
+Event
+Container
+Structure
+Relationship
+Assertion
+Observation
+Hypothesis
+Interpretation
+Context
+Framework
+Rule
+Constraint
+Preference
+Heuristic
+Tendency
+Procedure
+Activity
+Evidence
+Provenance
+Intent
+Candidate
+Transformation
+```
+
+These categories have different semantics and shall not be implemented as interchangeable generic records merely for convenience.
+
+---
+
+# 10. Entity
+
+An Entity is an identifiable conceptual object.
+
+Examples:
+
+```text
+Work
+Instrument
+Voice
+Motif
+Phrase
+Framework
+Rule
+TransformationDefinition
+```
+
+A persistent entity shall normally have:
+
+```text
+id
+type
+schema_version
+metadata
+provenance_reference
+```
+
+---
+
+# 11. Value Object
+
+A Value represents immutable semantic content whose identity derives from its value.
+
+Examples:
+
+```text
+Duration
+MusicalTime
+PitchClass
+PitchSpelling
+Interval
+MeterSignature
+Tempo
+Ratio
+Frequency
+```
+
+Value objects shall generally be immutable.
+
+---
+
+# 12. Occurrence
+
+An Occurrence represents one situated instance of something.
+
+Examples:
+
+```text
+MotifOccurrence
+PhraseOccurrence
+ThemeOccurrence
+PerformanceOccurrence
+NotationOccurrence
+```
+
+Occurrence is critical because conceptual identity and manifestation are different.
+
+Example:
+
+```text
+Motif M1
+    ├── occurrence O1
+    ├── occurrence O2
+    └── occurrence O3
+```
+
+A motif may exist as an abstract analytical object while occurrences identify regions in actual musical material.
+
+---
+
+# 13. Event
+
+An Event represents an occurrence associated with a temporal domain.
+
+Examples:
+
+```text
+NoteEvent
+RestEvent
+TempoEvent
+MeterChangeEvent
+ControlEvent
+```
+
+Events may be instantaneous or extended.
+
+The temporal model shall not assume that every event is represented solely by:
+
+```text
+onset + duration
+```
+
+---
+
+# 14. Event Identity
+
+An event shall have stable identity.
+
+Example:
+
+```text
+event-8e92...
+```
+
+Its identity shall not depend on:
+
+```text
+measure number
+voice position
+array index
+MIDI tick
+file location
+```
+
+---
+
+# 15. Event Lifecycle
+
+The system shall distinguish:
+
+```text
+creation
+revision
+derivation
+supersession
+deletion/tombstoning
+```
+
+where persistent storage requires historical traceability.
+
+Deletion of an object from an application view shall not necessarily mean destruction of provenance.
+
+---
+
+# 16. Version Model
+
+Identity and version are distinct.
+
+Example:
+
+```text
+EntityID = M1
+Version  = 4
+```
+
+A revision means:
+
+```text
+M1 version 4
+```
+
+A derived object means:
+
+```text
+M2
+derived_from M1
+```
+
+These shall not be conflated.
+
+---
+
+# 17. Temporal Architecture
+
+Time shall be explicitly multidimensional.
+
+At minimum:
+
+```text
+MusicalTime
+NotatedTime
+AbsoluteTime
+PerformanceTime
+AudioTime
+```
+
+A system shall not assume these are interchangeable.
+
+---
+
+# 18. MusicalTime
+
+MusicalTime represents symbolic temporal position.
+
+The foundational representation shall support exact rational values.
+
+Example:
+
+```text
+0
+1/4
+1/2
+3/4
+7/12
+```
+
+Conceptually:
+
+```text
+RationalTime {
+    numerator: Integer
+    denominator: PositiveInteger
+}
+```
+
+The implementation may use a more optimized equivalent, but exact semantics shall be preserved.
+
+---
+
+# 19. Duration
+
+Duration represents an amount of time.
+
+Required invariant:
+
+```text
+duration >= 0
+```
+
+Duration shall support exact rational values.
+
+Examples:
+
+```text
+1/4
+1/8
+3/16
+5/12
+```
+
+---
+
+# 20. Temporal Span
+
+The system shall introduce an explicit temporal span abstraction.
+
+```text
+TimeSpan
+    start
+    end
+    boundary semantics
+```
+
+This is preferable to assuming every object has `onset + duration`.
+
+A span may be:
+
+```text
+closed
+open
+left_closed
+right_closed
+```
+
+where the domain requires boundary distinctions.
+
+---
+
+# 21. Instant
+
+Some events have no meaningful duration.
+
+Examples:
+
+```text
+tempo change
+meter change
+key-signature declaration
+control message
+structural boundary
+```
+
+The system shall therefore support:
+
+```text
+TimeInstant
+```
+
+separately from:
+
+```text
+TimeSpan
+```
+
+---
+
+# 22. Temporal Anchors
+
+Objects may be anchored by:
+
+```text
+absolute musical position
+relative position
+container-relative position
+event-relative position
+notation position
+performance timestamp
+```
+
+The anchor type shall be explicit.
+
+---
+
+# 23. Relative Time
+
+The system shall support relationships such as:
+
+```text
+after Event A by 1/8
+before Event B by 1/16
+same onset as Event C
+```
+
+Relative temporal relationships shall not require conversion into absolute positions prematurely.
+
+---
+
+# 24. Meter
+
+Meter describes metrical organization.
+
+Example:
+
+```text
+4/4
+3/4
+6/8
+5/8
+```
+
+Meter shall not itself determine all temporal semantics.
+
+Meter shall be represented independently from duration.
+
+---
+
+# 25. MeterMap
+
+A MeterMap associates metrical organization with temporal regions.
+
+Conceptually:
+
+```text
+MeterMap
+    region
+    meter_signature
+    effective_from
+    optional beat structure
+    optional hierarchy
+```
+
+Metrical interpretation shall be derivable from the map plus musical time.
+
+---
+
+# 26. Metrical Position
+
+MetricalPosition may contain:
+
+```text
+measure_index
+beat
+subdivision
+metrical_level
+beat_strength
+local_position
+```
+
+However, these are contextual coordinates rather than intrinsic properties of time.
+
+---
+
+# 27. Notated Position
+
+Notated position shall be distinct from MusicalTime.
+
+It may include:
+
+```text
+document
+page
+system
+staff
+measure
+layer
+symbol index
+graphic coordinates
+```
+
+A notation document may encode multiple temporal interpretations.
+
+---
+
+# 28. Tempo
+
+Tempo shall be modeled independently from symbolic musical time.
+
+A tempo mapping may be:
+
+```text
+constant
+piecewise constant
+piecewise linear
+continuous
+performance-derived
+algorithmically estimated
+```
+
+---
+
+# 29. TempoMap
+
+Conceptually:
+
+```text
+TempoMap:
+    musical_time → performance_time
+```
+
+The mapping shall be capable of representing:
+
+```text
+tempo changes
+accelerando
+ritardando
+rubato
+tempo curves
+performance deviations
+```
+
+---
+
+# 30. PerformanceTime
+
+PerformanceTime represents realized temporal coordinates.
+
+It may contain:
+
+```text
+onset timestamp
+release timestamp
+inter-onset interval
+timing deviation
+local tempo
+```
+
+Performance timing shall not overwrite symbolic MusicalTime.
+
+---
+
+# 31. AudioTime
+
+AudioTime shall represent positions in captured signal space.
+
+Examples:
+
+```text
+sample index
+frame index
+seconds
+```
+
+AudioTime shall remain distinct from PerformanceTime because signal capture and interpreted performance timing are not identical.
+
+---
+
+# 32. Temporal Mapping
+
+Mappings shall be first-class where necessary.
+
+Examples:
+
+```text
+MusicalTime ↔ PerformanceTime
+MusicalTime ↔ NotatedPosition
+PerformanceTime ↔ AudioTime
+```
+
+Mappings may be exact, approximate, piecewise, or uncertain.
+
+---
+
+# 33. Pitch Architecture
+
+Pitch shall be decomposed into independent dimensions.
+
+```text
+PitchIdentity
+PitchClass
+PitchSpelling
+PitchRealization
+TuningSystem
+Frequency
+PitchTrajectory
+```
+
+---
+
+# 34. PitchIdentity
+
+PitchIdentity represents abstract pitch information.
+
+It shall not assume:
+
+```text
+12 pitch classes
+equal temperament
+A = 440 Hz
+integer MIDI note numbers
+```
+
+---
+
+# 35. PitchClass
+
+PitchClass represents equivalence under a declared equivalence relation.
+
+This is important:
+
+> Pitch-class membership shall not be assumed to mean modulo-12 equivalence.
+
+A pitch-class system shall therefore declare its equivalence model.
+
+---
+
+# 36. PitchSpelling
+
+PitchSpelling represents notation-oriented pitch identity.
+
+Example:
+
+```text
+letter = C
+accidental = sharp
+octave = 4
+```
+
+Spelling shall remain distinct from pitch realization.
+
+Thus:
+
+```text
+C#
+Db
+```
+
+may be realized at equivalent frequencies while retaining different spellings.
+
+---
+
+# 37. PitchRealization
+
+PitchRealization represents a sounding or physically realizable pitch.
+
+Possible representations:
+
+```text
+frequency
+ratio
+cents
+fundamental
+custom tuning coordinate
+```
+
+---
+
+# 38. TuningSystem
+
+Tuning shall be independent.
+
+Examples:
+
+```text
+12-TET
+24-TET
+Pythagorean
+Just Intonation
+Meantone
+custom ratio system
+non-octave systems
+microtonal systems
+```
+
+The system shall not hard-code A440.
+
+---
+
+# 39. Pitch Trajectory
+
+Performance and audio analysis may require pitch to vary continuously.
+
+The architecture shall therefore support:
+
+```text
+PitchTrajectory
+    time
+    pitch realization
+    uncertainty
+```
+
+This permits:
+
+```text
+vibrato
+glissando
+pitch bend
+portamento
+microtonal drift
+```
+
+without corrupting symbolic pitch.
+
+---
+
+# 40. WrittenPitch and SoundingPitch
+
+The system shall distinguish:
+
+```text
+WrittenPitch
+SoundingPitch
+```
+
+An instrument transposition mapping may connect them.
+
+---
+
+# 41. Instrument
+
+Instrument is a higher-level entity.
+
+Possible properties:
+
+```text
+range
+tessitura
+transposition
+clefs
+articulations
+techniques
+dynamics
+continuous controls
+polyphony
+physical constraints
+preferred registers
+```
+
+These properties shall be configurable.
+
+---
+
+# 42. Instrument Capability
+
+Instrument capability shall be modeled separately from instrument identity where practical.
+
+Example:
+
+```text
+InstrumentCapability
+    pitch_range
+    simultaneous_note_limit
+    articulation_support
+    technique
+    physical_constraints
+```
+
+This allows the same instrument to have multiple playing contexts.
+
+---
+
+# 43. Core Musical Events
+
+The foundational event set shall remain small.
+
+Initial candidates:
+
+```text
+NoteEvent
+RestEvent
+ControlEvent
+```
+
+Additional event types may be added where they represent genuine domain distinctions.
+
+---
+
+# 44. NoteEvent
+
+A NoteEvent represents symbolic musical occurrence.
+
+Minimum conceptual model:
+
+```text
+NoteEvent
+    id
+    time_anchor
+    duration
+    pitch
+    voice_reference
+    provenance_reference
+```
+
+Optional data shall be attached through separate structures when possible.
+
+---
+
+# 45. NoteEvent Is Not Necessarily a Sound
+
+A NoteEvent may represent:
+
+```text
+notated note
+symbolic note
+analytical note event
+generated note
+```
+
+Its sounding realization is a separate concern.
+
+---
+
+# 46. RestEvent
+
+RestEvent represents an explicit symbolic absence in an appropriate context.
+
+It shall not be interpreted as universal physical silence.
+
+---
+
+# 47. ControlEvent
+
+ControlEvent may represent temporal changes not naturally modeled as notes.
+
+Examples:
+
+```text
+pedal
+control change
+continuous control
+program change
+performance instruction
+```
+
+Protocol-specific concepts shall remain adapter-specific unless promoted into domain semantics.
+
+---
+
+# 48. Event Attachments
+
+The architecture shall support attachable semantic objects for:
+
+```text
+articulation
+dynamic
+ornament
+tie
+slur
+pedal
+accent
+expression
+technique
+notation
+performance realization
+```
+
+This prevents NoteEvent from becoming a universal attribute bag.
+
+---
+
+# 49. Ties
+
+A tie shall be represented as a relationship/semantic object.
+
+A tie shall not require two note events to be merged.
+
+This preserves:
+
+```text
+notation semantics
+symbolic event identity
+performance realization
+analysis semantics
+```
+
+as separate concerns.
+
+---
+
+# 50. Slurs
+
+Slurs shall be represented independently of ties.
+
+A slur may indicate:
+
+```text
+phrasing
+legato
+performance instruction
+analytical grouping
+notation
+```
+
+depending on context.
+
+---
+
+# 51. Articulation
+
+Articulation shall be modeled as an attachment or event-level semantic object.
+
+Examples:
+
+```text
+staccato
+tenuto
+accent
+marcato
+fermata
+```
+
+The semantic and performance realization shall remain distinguishable.
+
+---
+
+# 52. Dynamics
+
+Dynamics shall be modeled separately from pitch events.
+
+Examples:
+
+```text
+p
+mf
+f
+crescendo
+diminuendo
+```
+
+Performance may realize these differently.
+
+---
+
+# 53. Voice
+
+A Voice represents a logical stream or simultaneity domain.
+
+A Voice shall not automatically imply:
+
+```text
+instrument
+staff
+part
+harmony
+melodic role
+```
+
+These relationships shall be explicit.
+
+---
+
+# 54. Part, Staff, Layer, Voice
+
+The architecture shall distinguish:
+
+```text
+Part
+Staff
+Layer
+Voice
+```
+
+because they are not universally equivalent.
+
+A voice may appear on multiple staves.
+
+A staff may contain multiple voices.
+
+A part may contain multiple staves.
+
+---
+
+# 55. Containers
+
+Containers group or organize objects.
+
+Examples:
+
+```text
+Voice
+Layer
+Staff
+Part
+Measure
+Phrase
+Section
+Movement
+Work
+```
+
+Containment shall be explicit.
+
+Containment shall not imply theoretical interpretation.
+
+---
+
+# 56. Structures
+
+Structures organize musical material at higher semantic levels.
+
+Examples:
+
+```text
+Motif
+Figure
+Phrase
+Theme
+Section
+Movement
+Work
+```
+
+Structures may reference events without duplicating them.
+
+---
+
+# 57. Structure Does Not Imply Hierarchy
+
+The system shall permit arbitrary structural relationships.
+
+A work need not have:
+
+```text
+Motif → Phrase → Theme → Section
+```
+
+as its universal hierarchy.
+
+Hierarchical structure shall be optional.
+
+---
+
+# 58. Occurrences of Structures
+
+A structure may be abstract while occurrences are situated.
+
+Example:
+
+```text
+Motif M1
+    occurrence O1 = events 1–4
+    occurrence O2 = events 17–20
+```
+
+This enables pattern and form analysis without duplicating musical events.
+
+---
+
+# 59. Score Model
+
+The score model is a specialized representation layer.
+
+It may contain:
+
+```text
+Staff
+Clef
+Key Signature
+Time Signature
+Measure
+Beam
+Stem
+Barline
+Tuplet
+Layout
+Page
+System
+```
+
+Score structures shall not redefine canonical musical events.
+
+---
+
+# 60. Notation Model
+
+Notation shall be treated as a **document/representation model**, not merely a renderer.
+
+This distinction is important.
+
+A notation artifact may contain information that has no direct canonical-event equivalent:
+
+```text
+engraving decisions
+page layout
+graphic coordinates
+beaming
+stem directions
+editorial markings
+facsimile references
+variant readings
+source-document structure
+```
+
+The system shall preserve such information in the notation layer where required.
+
+MEI is an important precedent: its scope includes not merely abstract notes but structured musical documents, metadata, notation, analysis, performances, and linking.
+
+---
+
+# 61. Performance Model
+
+A Performance is a realization of musical material.
+
+It may contain:
+
+```text
+performance events
+actual onset
+actual release
+velocity
+pitch realization
+timing deviation
+dynamic realization
+articulation realization
+pedal state
+continuous controls
+performer metadata
+```
+
+---
+
+# 62. Performance Event
+
+A PerformanceEvent shall reference its symbolic or conceptual source where known.
+
+Example:
+
+```text
+PerformanceEvent P1
+    realizes NoteEvent N1
+```
+
+But the relationship may be:
+
+```text
+one-to-one
+one-to-many
+many-to-one
+unknown
+```
+
+This is essential for:
+
+```text
+ornamentation
+arpeggiation
+splitting
+merging
+repeated attacks
+imperfect transcription
+```
+
+---
+
+# 63. Recording
+
+A Recording represents captured signal.
+
+Example:
+
+```text
+Recording
+    channels
+    sample_rate
+    duration
+    encoding
+    source
+    metadata
+```
+
+A recording is not itself a musical interpretation.
+
+---
+
+# 64. Recording-to-Music Mapping
+
+Audio analysis may produce:
+
+```text
+Observation
+```
+
+which may produce:
+
+```text
+Candidate
+```
+
+which may become:
+
+```text
+Interpretation
+```
+
+which may eventually produce:
+
+```text
+Canonical Musical Representation
+```
+
+This progression shall preserve uncertainty.
+
+---
+
+# 65. Semantic Layer
+
+The semantic layer contains derived or framework-independent musical concepts.
+
+Examples:
+
+```text
+Interval
+Sonority
+Contour
+RhythmicPattern
+PitchCollection
+Scale
+```
+
+Some concepts such as `Chord` and `Key` require explicit contextual/framework semantics and therefore shall not automatically be treated as foundational facts.
+
+---
+
+# 66. Derived Semantics
+
+A derived semantic object shall identify its source.
+
+Example:
+
+```text
+Interval I1
+    endpoint_a = N1
+    endpoint_b = N2
+    derivation = interval_calculation
+```
+
+Derived semantics may be materialized for:
+
+```text
+query
+cache
+analysis
+indexing
+```
+
+without becoming source truth.
+
+---
+
+# 67. Interval
+
+Interval shall support:
+
+```text
+directed interval
+undirected interval
+diatonic distance
+chromatic distance
+quality
+compound interval
+microtonal interval
+ratio
+cents
+framework-specific interpretation
+```
+
+The interval representation shall identify which dimensions are actually known.
+
+---
+
+# 68. Sonority
+
+Sonority represents a selected collection of simultaneously relevant pitch-bearing events.
+
+Its selection semantics shall be explicit.
+
+For example:
+
+```text
+time window
+voice set
+performance realization
+symbolic events
+sounding events
+```
+
+A Sonority is not automatically a Chord.
+
+---
+
+# 69. Chord
+
+Chord shall be modeled as a semantic interpretation of a sonority or other material under a declared framework/context.
+
+Example:
+
+```text
+Sonority S1
+    ↓
+Interpretation I1
+    claim = C-major triad
+    framework = tonal-harmony
+```
+
+---
+
+# 70. Key
+
+Key shall be contextual.
+
+A note shall not intrinsically contain:
+
+```text
+scale degree
+tonic function
+Roman numeral
+```
+
+These shall be derived relative to context.
+
+---
+
+# 71. Scale
+
+Scale shall represent an ordered pitch collection under declared semantics.
+
+Possible attributes:
+
+```text
+root
+ordered pitch collection
+interval pattern
+tuning
+framework
+orientation
+```
+
+---
+
+# 72. Scale Degree
+
+Scale degree is contextual.
+
+Therefore:
+
+```text
+Pitch C
+```
+
+does not intrinsically equal:
+
+```text
+degree 1
+```
+
+A scale-degree assertion shall identify:
+
+```text
+target
+context
+framework
+mapping
+```
+
+---
+
+# 73. Contour
+
+Contour represents relative change.
+
+Examples:
+
+```text
+up
+down
+same
+up-up-down
+```
+
+Contour may be computed independently from exact pitch.
+
+---
+
+# 74. Rhythmic Pattern
+
+Rhythmic patterns shall be independently representable.
+
+A rhythmic query shall not require pitch information.
+
+---
+
+# 75. Relationship Model
+
+Relationships shall be first-class.
+
+Conceptual model:
+
+```text
+Relationship
+    id
+    source
+    predicate
+    target
+    scope
+    context
+    qualifiers
+    evidence
+    uncertainty
+    provenance
+```
+
+---
+
+# 76. Relationship Predicate
+
+Predicates shall have metadata.
+
+Example:
+
+```text
+PredicateDefinition
+    name
+    inverse
+    symmetric
+    transitive
+    allowed_source_types
+    allowed_target_types
+    contextual
+```
+
+This prevents relationship semantics from being implicit.
+
+---
+
+# 77. Initial Predicate Vocabulary
+
+Examples:
+
+```text
+contains
+contained_by
+precedes
+follows
+overlaps
+coincident_with
+derived_from
+transformed_from
+realizes
+resembles
+contrasts_with
+interpreted_as
+supports
+contradicts
+occurs_in
+belongs_to
+instantiates
+has_occurrence
+```
+
+The vocabulary shall be extensible.
+
+---
+
+# 78. Relationship Scope
+
+A relationship may have scope:
+
+```text
+global
+work
+movement
+section
+phrase
+measure
+voice
+event
+performance
+analysis
+```
+
+---
+
+# 79. Relationship Validity
+
+Relationships may have:
+
+```text
+valid_from
+valid_until
+context
+framework
+version
+```
+
+This is required because relationships can change as interpretations or versions change.
+
+---
+
+# 80. Assertion
+
+An Assertion is a claim made by an agent or process.
+
+Examples:
+
+```text
+Note N belongs to phrase P
+Phrase P is a cadence
+Sonority S is a C-major chord
+```
+
+Assertions shall be distinct from the underlying objects they describe.
+
+---
+
+# 81. Observation
+
+Observation records detected or measured information.
+
+Examples:
+
+```text
+detected onset at 1.24 sec
+OCR candidate C#
+audio pitch estimate = 440 Hz
+algorithm detected possible repetition
+```
+
+Observation does not imply interpretation.
+
+---
+
+# 82. Observation Structure
+
+Conceptually:
+
+```text
+Observation
+    id
+    subject
+    property
+    value_or_candidates
+    method
+    source
+    uncertainty
+    timestamp
+    provenance
+```
+
+---
+
+# 83. Hypothesis
+
+A Hypothesis represents a candidate explanation.
+
+Examples:
+
+```text
+possible key = C major
+possible chord = V/V
+possible motif match
+possible note spelling
+```
+
+Hypotheses shall support multiple candidates.
+
+---
+
+# 84. Uncertainty
+
+Uncertainty shall be a first-class object.
+
+It may represent:
+
+```text
+unknown
+interval estimate
+probability distribution
+confidence score
+candidate set
+credible interval
+qualitative uncertainty
+competing hypotheses
+```
+
+A scalar confidence shall not be the universal uncertainty model.
+
+---
+
+# 85. Candidate Set
+
+Example:
+
+```text
+CandidateSet
+    C#  probability .73
+    Db  probability .19
+    C   probability .08
+```
+
+The architecture shall not require these probabilities to sum to one unless the uncertainty model explicitly says they represent a normalized distribution.
+
+---
+
+# 86. Unknown vs Low Confidence
+
+The system shall distinguish:
+
+```text
+unknown
+```
+
+from:
+
+```text
+known approximately
+```
+
+and:
+
+```text
+known candidates with probabilities
+```
+
+These have different semantics.
+
+---
+
+# 87. Interpretation
+
+Interpretation represents a contextual claim about musical material.
+
+Conceptually:
+
+```text
+Interpretation
+    target
+    claim
+    framework
+    context
+    evidence
+    uncertainty
+    author
+    method
+    status
+    provenance
+```
+
+---
+
+# 88. Interpretation Status
+
+Possible states:
+
+```text
+proposed
+supported
+accepted
+rejected
+superseded
+user_confirmed
+machine_generated
+imported
+disputed
+unknown
+```
+
+Status semantics shall be configurable.
+
+---
+
+# 89. Competing Interpretations
+
+Multiple interpretations shall coexist.
+
+Example:
+
+```text
+Interpretation A:
+    C major
+
+Interpretation B:
+    E minor
+
+Interpretation C:
+    modal context
+```
+
+No global winner is required.
+
+---
+
+# 90. Context
+
+Context defines conditions under which an assertion is evaluated.
+
+Examples:
+
+```text
+tonal context
+metrical context
+instrument context
+performance context
+historical context
+analytical context
+theoretical framework
+local structural context
+```
+
+---
+
+# 91. Context Composition
+
+Contexts may be nested or composed.
+
+Example:
+
+```text
+Work context
+    ↓
+Movement context
+    ↓
+Section context
+    ↓
+Phrase context
+    ↓
+Event context
+```
+
+A child context may inherit properties while overriding others.
+
+The inheritance rules must be explicit.
+
+---
+
+# 92. Context Resolution
+
+When an interpretation is evaluated, the system shall determine:
+
+```text
+applicable contexts
+context precedence
+inherited properties
+overrides
+conflicts
+unknown values
+```
+
+---
+
+# 93. Framework
+
+A Framework defines an interpretive system.
+
+Examples:
+
+```text
+Common-Practice Harmony
+Species Counterpoint
+Jazz Harmony
+Schenkerian Analysis
+Set Theory
+Neo-Riemannian Theory
+Modal Theory
+Custom User Framework
+```
+
+Frameworks shall consume canonical domain interfaces.
+
+They shall not modify foundational objects merely to implement theory-specific semantics.
+
+---
+
+# 94. Framework Versioning
+
+Every nontrivial framework shall be versioned.
+
+Example:
+
+```text
+framework_id = common_practice_harmony
+framework_version = 2.1
+```
+
+Rule evaluations shall record the framework version used.
+
+---
+
+# 95. Rule
+
+A Rule is a formal evaluative statement.
+
+Example:
+
+```text
+parallel fifths prohibited
+```
+
+A rule shall define:
+
+```text
+framework
+scope
+conditions
+evaluation
+severity
+explanation
+version
+```
+
+---
+
+# 96. Constraint
+
+A Constraint restricts candidate states.
+
+Types:
+
+```text
+hard
+soft
+weighted
+conditional
+contextual
+```
+
+Constraints shall be machine-evaluable where used for generation.
+
+---
+
+# 97. Preference
+
+A Preference ranks candidates without necessarily invalidating them.
+
+Example:
+
+```text
+prefer stepwise motion
+```
+
+---
+
+# 98. Heuristic
+
+A heuristic is a strategy or estimate.
+
+Example:
+
+```text
+favor likely cadential continuation
+```
+
+Heuristics shall not be represented as universal truths.
+
+---
+
+# 99. Tendency
+
+A Tendency represents observed statistical behavior.
+
+Example:
+
+```text
+transition X → Y occurs frequently in corpus C
+```
+
+A tendency shall never automatically imply:
+
+```text
+must
+must not
+valid
+invalid
+```
+
+---
+
+# 100. Statistical Model
+
+Statistical models shall be explicit objects.
+
+Example:
+
+```text
+StatisticalModel
+    input_features
+    output
+    probability
+    training_corpus
+    model_version
+    calibration
+```
+
+A model's output shall not become a theory rule automatically.
+
+---
+
+# 101. Procedure
+
+A Procedure describes an algorithmic method.
+
+Examples:
+
+```text
+Roman numeral analysis
+cadence detection
+phrase segmentation
+motif search
+species generator
+```
+
+A procedure shall declare:
+
+```text
+inputs
+outputs
+configuration
+version
+dependencies
+determinism
+```
+
+---
+
+# 102. Rule Evaluation
+
+Conceptually:
+
+```text
+RuleEvaluation
+    rule
+    target
+    context
+    result
+    severity
+    evidence
+    explanation
+    evaluator
+    evaluator_version
+```
+
+Results:
+
+```text
+pass
+fail
+warning
+unknown
+not_applicable
+```
+
+---
+
+# 103. Evidence
+
+Evidence is a structured basis for an assertion.
+
+Examples:
+
+```text
+observed pitch
+interval relationship
+voice-leading pattern
+corpus statistic
+user annotation
+external scholarly source
+rule result
+machine prediction
+```
+
+Evidence shall be distinguishable from the interpretation it supports.
+
+---
+
+# 104. Evidence Strength
+
+Evidence may have:
+
+```text
+strength
+relevance
+reliability
+independence
+method
+source
+```
+
+A single scalar evidence score shall not be required.
+
+---
+
+# 105. Provenance
+
+Provenance shall be modeled explicitly rather than merely as a text field.
+
+The system should conceptually support the provenance pattern:
+
+```text
+Entity
+Activity
+Agent
+Derivation
+Attribution
+Association
+```
+
+This aligns naturally with established provenance modeling such as W3C PROV, whose data model explicitly represents entities, activities, agents, derivations, collections and related provenance information.
+
+The platform need not implement W3C PROV literally, but should remain mappable to it.
+
+---
+
+# 106. Provenance Activity
+
+An Activity represents a process that produces or changes information.
+
+Examples:
+
+```text
+import
+normalization
+analysis
+transformation
+generation
+OCR
+audio transcription
+manual editing
+export
+```
+
+---
+
+# 107. Provenance Agent
+
+An Agent may be:
+
+```text
+human
+software
+organization
+ML model
+external source
+```
+
+---
+
+# 108. Provenance Derivation
+
+A derivation records:
+
+```text
+output
+input
+activity
+parameters
+agent
+software_version
+framework_version
+timestamp
+```
+
+---
+
+# 109. Event-Level Transformation Provenance
+
+Transformations shall preserve mappings between source and output events where meaningful.
+
+Example:
+
+```text
+Output Note N7
+    derived_from:
+        Input Note N2
+    transformation:
+        transposition +P5
+```
+
+For one-to-many transformations:
+
+```text
+Input N2
+    → N7
+    → N8
+    → N9
+```
+
+The mapping shall be retained.
+
+---
+
+# 110. Provenance Graph
+
+Provenance should normally be acyclic.
+
+Example:
+
+```text
+Source
+ ↓
+ImportedArtifact
+ ↓
+NormalizedRepresentation
+ ↓
+Analysis
+ ↓
+MotifHypothesis
+ ↓
+UserAcceptedMotif
+ ↓
+Transformation
+ ↓
+GeneratedMaterial
+```
+
+Cycles shall be prohibited unless explicitly supported by a future provenance model.
+
+---
+
+# 111. Audit History vs Provenance
+
+The architecture shall distinguish:
+
+```text
+provenance
+```
+
+from:
+
+```text
+audit history
+```
+
+Provenance answers:
+
+> Where did this artifact come from?
+
+Audit history answers:
+
+> Who changed what, when, and why?
+
+Both may be required.
+
+---
+
+# 112. Authored Content
+
+Human-authored analysis shall remain identifiable.
+
+Example:
+
+```text
+Annotation
+    author
+    target
+    claim
+    context
+    framework
+    timestamp
+```
+
+A user accepting a machine interpretation shall not erase the machine origin.
+
+---
+
+# 113. Promotion
+
+A derived result may be promoted to authored content.
+
+Example:
+
+```text
+Machine:
+    possible V/V
+
+User:
+    accepts
+```
+
+The promoted assertion shall retain:
+
+```text
+machine hypothesis
+user action
+timestamp
+original evidence
+original provenance
+```
+
+---
+
+# 114. Equality Semantics
+
+The system shall explicitly distinguish:
+
+```text
+identity equality
+value equality
+structural equality
+semantic equality
+canonical equality
+```
+
+---
+
+# 115. Identity Equality
+
+Two objects are identity-equal if they refer to the same entity/version under the domain's identity rules.
+
+---
+
+# 116. Value Equality
+
+Two value objects are equal if their semantic values are equal.
+
+---
+
+# 117. Structural Equality
+
+Two objects are structurally equal if their corresponding structure is equivalent under declared structural rules.
+
+---
+
+# 118. Semantic Equality
+
+Two objects may be semantically equivalent despite differing representations.
+
+Example:
+
+```text
+different spellings
+```
+
+may be semantically equivalent under a particular tuning/context.
+
+---
+
+# 119. Canonical Equality
+
+Canonical equality means that two representations normalize to the same canonical form under a specified normalization policy.
+
+Normalization policy must be versioned.
+
+---
+
+# 120. Canonicalization
+
+Canonicalization shall not destroy meaningful distinctions.
+
+For example:
+
+```text
+C#
+Db
+```
+
+must not be normalized to one spelling if the distinction is meaningful to notation or theory.
+
+---
+
+# 121. Partial Information
+
+Objects shall support partial knowledge where necessary.
+
+Examples:
+
+```text
+pitch = unknown
+pitch_candidates = [...]
+duration = known
+spelling = unknown
+```
+
+The system shall not force placeholders to masquerade as facts.
+
+---
+
+# 122. Musical IR
+
+The canonical IR shall represent musical content using domain semantics rather than transport syntax.
+
+A minimal conceptual note:
+
+```text
+NoteEvent {
+    id
+    temporal_anchor
+    duration
+    pitch_identity
+    optional_pitch_spelling
+    optional_voice
+    provenance
+}
+```
+
+The actual serialization is separate.
+
+---
+
+# 123. Canonical IR Requirements
+
+The canonical IR shall support:
+
+```text
+exact time
+exact duration
+multiple tuning systems
+multiple pitch representations
+stable identity
+partial information
+relationships
+contexts
+provenance
+versioning
+extensions
+```
+
+---
+
+# 124. Serialization
+
+Serialization converts canonical objects to external syntax.
+
+Examples:
+
+```text
+JSON
+protobuf
+CBOR
+XML
+binary
+```
+
+No serialization format shall define the domain semantics.
+
+---
+
+# 125. Canonical Serialization
+
+A canonical serialization should provide:
+
+```text
+schema version
+stable identifiers
+deterministic field ordering
+exact rational values
+explicit null/unknown semantics
+extension mechanism
+canonical ordering
+migration support
+```
+
+---
+
+# 126. Serialization vs Persistence
+
+Serialization:
+
+```text
+object → representation
+```
+
+Persistence:
+
+```text
+object → durable storage
+```
+
+These shall remain distinct.
+
+---
+
+# 127. Storage Independence
+
+The domain shall not depend on:
+
+```text
+PostgreSQL
+MongoDB
+Neo4j
+SQLite
+event sourcing
+object storage
+```
+
+Any of these may be used behind repository interfaces.
+
+---
+
+# 128. Persistence Model
+
+Likely mature architecture:
+
+```text
+Canonical Object Store
++
+Relationship Store
++
+Search Indexes
++
+Corpus Analytical Store
++
+Blob/Object Storage
+```
+
+Phase 1 shall use the simplest implementation that preserves semantics.
+
+---
+
+# 129. Repository Interfaces
+
+Domain services shall use interfaces such as:
+
+```text
+EventRepository
+EntityRepository
+RelationshipRepository
+StructureRepository
+InterpretationRepository
+ProvenanceRepository
+```
+
+Storage implementations remain replaceable.
+
+---
+
+# 130. Transaction Boundaries
+
+Operations that create related objects shall have explicit consistency semantics.
+
+For example:
+
+```text
+Transformation
+    creates output object
+    creates provenance activity
+    creates relationships
+```
+
+These records must not leave the system in a state where the output exists but its mandatory lineage does not.
+
+---
+
+# 131. Caching
+
+Derived values may be cached.
+
+Cache keys shall include all semantic dependencies.
+
+Example:
+
+```text
+object_id
+object_version
+analyzer_version
+framework_version
+context_hash
+configuration_hash
+```
+
+---
+
+# 132. Query Architecture
+
+Applications shall use domain queries.
+
+Preferred:
+
+```text
+find_notes(region)
+find_intervals(sequence)
+find_occurrences(motif)
+find_interpretations(target)
+find_relationships(subject)
+```
+
+rather than exposing SQL.
+
+---
+
+# 133. Query Semantics
+
+Each query operation shall specify:
+
+```text
+input domain
+selection semantics
+ordering semantics
+context semantics
+uncertainty semantics
+version semantics
+```
+
+---
+
+# 134. Pattern Matching
+
+Pattern matching shall operate over declared dimensions.
+
+Example:
+
+```text
+interval sequence:
+    -m2, +M3
+```
+
+or:
+
+```text
+rhythm:
+    1/8, 1/8, 1/4
+```
+
+---
+
+# 135. Similarity
+
+Similarity shall explicitly declare its dimensions.
+
+Possible dimensions:
+
+```text
+exact pitch
+pitch class
+interval sequence
+contour
+rhythm
+rhythm + contour
+transposition
+inversion
+retrograde
+retrograde inversion
+approximate pitch
+approximate rhythm
+```
+
+No generic `similarity()` shall exist without declared semantics.
+
+---
+
+# 136. Search Result
+
+A search result shall contain:
+
+```text
+target
+match region
+similarity
+criteria
+evidence
+provenance
+context
+```
+
+---
+
+# 137. Views
+
+Derived views may include:
+
+```text
+Temporal View
+Pitch View
+Rhythmic View
+Voice View
+Harmonic View
+Motivic View
+Formal View
+Performance View
+Notation View
+```
+
+Views shall reference canonical data rather than unnecessarily duplicating it.
+
+---
+
+# 138. Transformation Architecture
+
+Transformations are explicit domain operations.
+
+Examples:
+
+```text
+Transposition
+Inversion
+Retrograde
+RetrogradeInversion
+Augmentation
+Diminution
+Fragmentation
+Expansion
+Contraction
+Displacement
+Ornamentation
+```
+
+---
+
+# 139. Transformation Contract
+
+Every transformation shall define:
+
+```text
+input type
+parameters
+output type
+preserved dimensions
+modified dimensions
+mapping behavior
+validation
+provenance
+determinism
+```
+
+---
+
+# 140. Transformation Purity
+
+Where practical:
+
+```text
+Transform(input, parameters)
+    →
+output
+```
+
+shall be referentially transparent.
+
+Inputs shall not be silently mutated.
+
+---
+
+# 141. Transposition
+
+Transposition shall explicitly define:
+
+```text
+pitch displacement
+spelling behavior
+tuning behavior
+range policy
+instrument context
+```
+
+---
+
+# 142. Inversion
+
+Inversion shall explicitly define:
+
+```text
+axis
+pitch space
+spelling policy
+tuning semantics
+```
+
+Example:
+
+```text
+axis = C4
+```
+
+must not be confused with:
+
+```text
+axis = first_note
+```
+
+---
+
+# 143. Retrograde
+
+Retrograde shall explicitly state what is reversed.
+
+Possible dimensions:
+
+```text
+event order
+pitch sequence
+rhythmic sequence
+articulation sequence
+all event attributes
+```
+
+---
+
+# 144. Augmentation / Diminution
+
+Symbolic augmentation shall modify declared temporal dimensions.
+
+It shall specify whether it modifies:
+
+```text
+durations
+inter-onset intervals
+structural timing
+notation values
+performance timing
+```
+
+Default symbolic behavior shall not modify performance timing unless requested.
+
+---
+
+# 145. Ornamentation
+
+Ornamentation is not simply a pitch transformation.
+
+It may transform:
+
+```text
+one symbolic event
+```
+
+into:
+
+```text
+multiple events
+```
+
+Therefore provenance mappings must support one-to-many derivation.
+
+---
+
+# 146. Transformation Validation
+
+Every transformation shall validate:
+
+```text
+input compatibility
+parameter validity
+domain invariants
+instrument constraints where applicable
+output validity
+provenance completeness
+```
+
+---
+
+# 147. Analysis Architecture
+
+Analysis pipeline:
+
+```text
+Input
+ ↓
+Normalization
+ ↓
+Observation
+ ↓
+Feature Extraction
+ ↓
+Candidate Generation
+ ↓
+Context Resolution
+ ↓
+Interpretation
+ ↓
+Evidence
+ ↓
+Uncertainty
+ ↓
+Result
+```
+
+Analysis shall not mutate source musical material merely because it produces an interpretation.
+
+---
+
+# 148. Analyzer Interface
+
+Conceptually:
+
+```text
+Analyzer
+    analyze(input, context, configuration)
+        → AnalysisResult
+```
+
+The result shall include:
+
+```text
+observations
+candidates
+interpretations
+evidence
+uncertainty
+provenance
+```
+
+---
+
+# 149. Feature Extraction
+
+Features shall be explicit.
+
+Examples:
+
+```text
+pitch interval
+pitch class
+contour
+duration
+metrical position
+density
+voice crossing
+register
+sonority
+```
+
+Features may be cached but remain derived.
+
+---
+
+# 150. Candidate Generation
+
+Analysis systems shall distinguish:
+
+```text
+observed fact
+candidate
+interpretation
+```
+
+Example:
+
+```text
+Observed:
+    pitches C E G
+
+Candidate:
+    C-major sonority
+
+Interpretation:
+    tonic harmony in C major
+```
+
+---
+
+# 151. Harmonic Analysis
+
+Conceptual pipeline:
+
+```text
+Canonical Events
+ ↓
+Sonority Extraction
+ ↓
+Key Hypotheses
+ ↓
+Chord Hypotheses
+ ↓
+Context Resolution
+ ↓
+Framework Evaluation
+ ↓
+Interpretations
+ ↓
+Evidence
+ ↓
+Uncertainty
+```
+
+---
+
+# 152. Motif Analysis
+
+Motif detection shall create:
+
+```text
+Motif
+Occurrence
+SimilarityResult
+Evidence
+```
+
+It shall not duplicate the matched events.
+
+---
+
+# 153. Generation Architecture
+
+Generation shall be planning-based.
+
+Pipeline:
+
+```text
+Intent
+ ↓
+Intent Normalization
+ ↓
+Context Resolution
+ ↓
+Constraint Extraction
+ ↓
+Constraint Normalization
+ ↓
+Conflict Detection
+ ↓
+Generation Plan
+ ↓
+Candidate Generation
+ ↓
+Candidate Evaluation
+ ↓
+Validation
+ ↓
+Selection
+ ↓
+Canonical Material
+ ↓
+Provenance
+```
+
+---
+
+# 154. Intent
+
+Natural language shall compile into structured Intent.
+
+Example:
+
+```text
+Intent
+    purpose = generation
+    target = melody
+    style = classical
+    context = Eb major
+    meter = 4/4
+    length = 16 bars
+    constraints = [...]
+    preferences = [...]
+    source_material = [...]
+```
+
+Natural language shall not directly manipulate the IR.
+
+---
+
+# 155. Constraint Normalization
+
+Before generation:
+
+```text
+Intent
+ ↓
+Constraint Extraction
+ ↓
+Normalization
+ ↓
+Conflict Detection
+ ↓
+Executable Constraint Set
+```
+
+---
+
+# 156. Constraint Conflict
+
+Conflicts shall be explicit.
+
+Example:
+
+```text
+Hard:
+    stay within instrument range
+
+Preference:
+    use large leaps
+
+User:
+    require octave leap
+```
+
+The system shall report conflicts instead of silently dropping requirements.
+
+---
+
+# 157. Constraint Priority
+
+The system shall distinguish:
+
+```text
+priority
+severity
+weight
+```
+
+These are not synonyms.
+
+---
+
+# 158. Candidate
+
+A Candidate is a proposed generation result before final acceptance.
+
+Conceptually:
+
+```text
+Candidate
+    material
+    evaluations
+    violations
+    score
+    provenance
+```
+
+---
+
+# 159. Candidate Evaluation
+
+Candidates may be evaluated using:
+
+```text
+hard constraints
+rules
+preferences
+heuristics
+statistical models
+user feedback
+```
+
+Evaluation results shall remain explainable.
+
+---
+
+# 160. Generator
+
+Conceptually:
+
+```text
+Generator
+    generate(plan)
+        → CandidateSet
+```
+
+Generators shall declare:
+
+```text
+supported inputs
+supported outputs
+configuration
+constraints
+determinism
+version
+```
+
+---
+
+# 161. Generator Composition
+
+Generators may compose.
+
+Example:
+
+```text
+ThemeGenerator
+    ↓
+PhraseGenerator
+    ↓
+BasicIdeaGenerator
+```
+
+The interface between levels shall remain explicit.
+
+---
+
+# 162. Hierarchical Generation
+
+Generation may operate at:
+
+```text
+motif
+basic idea
+phrase
+theme
+section
+movement
+work
+```
+
+The hierarchy is a generation strategy, not a universal ontology.
+
+---
+
+# 163. Stochastic Generation
+
+Stochastic generators shall accept:
+
+```text
+random_seed
+```
+
+and preserve:
+
+```text
+seed
+generator_version
+configuration
+input_ids
+framework_version
+```
+
+---
+
+# 164. Reproducibility
+
+A compatible implementation should be able to reconstruct a generation given:
+
+```text
+intent
+context
+constraints
+preferences
+source_material
+generator_version
+framework_version
+configuration
+seed
+```
+
+Exact bit-for-bit reproducibility may be impossible across incompatible implementations and shall therefore be distinguished from semantic reproducibility.
+
+---
+
+# 165. Semantic Reproducibility
+
+The architecture shall distinguish:
+
+```text
+bitwise reproducibility
+implementation reproducibility
+semantic reproducibility
+```
+
+This prevents unrealistic guarantees.
+
+---
+
+# 166. Human-in-the-Loop
+
+Human feedback shall become structured information.
+
+Examples:
+
+```text
+constraint
+preference
+annotation
+ranking signal
+rejection reason
+```
+
+It shall not directly mutate the generated result without an explicit operation.
+
+---
+
+# 167. Machine Learning
+
+ML shall be an interchangeable provider.
+
+ML components may produce:
+
+```text
+Observation
+Prediction
+Candidate
+Probability
+Embedding
+Feature
+Score
+```
+
+The domain shall not depend on a particular ML framework.
+
+---
+
+# 168. Neural Generation
+
+Preferred architecture:
+
+```text
+Structured Intent
+ ↓
+Neural Model
+ ↓
+Candidate Musical Structures
+ ↓
+Symbolic Validation
+ ↓
+Theory Evaluation
+ ↓
+Ranking
+ ↓
+Canonical Musical Representation
+```
+
+Direct MIDI generation shall not be a foundational requirement.
+
+---
+
+# 169. Practice Generation
+
+Practice generation shall use the same musical infrastructure.
+
+```text
+PracticeRequest
+    instrument
+    technique
+    skill_level
+    pitch_context
+    rhythmic_context
+    duration
+    difficulty
+```
+
+Result:
+
+```text
+Canonical Musical Representation
+```
+
+which may then be rendered to:
+
+```text
+notation
+MIDI
+audio
+```
+
+---
+
+# 170. Difficulty
+
+Difficulty shall be multidimensional.
+
+Possible dimensions:
+
+```text
+pitch
+rhythm
+range
+articulation
+technical
+cognitive
+reading
+tempo
+coordination
+```
+
+A scalar difficulty is a derived summary, not foundational truth.
+
+---
+
+# 171. Ear Training
+
+Ear training shall use foundational semantic objects.
+
+Example:
+
+```text
+IntervalRequest
+    interval
+    direction
+    context
+    repetitions
+```
+
+The interval model shall be shared with analysis and theory.
+
+---
+
+# 172. OCR
+
+OCR is an input mechanism.
+
+Pipeline:
+
+```text
+Image
+ ↓
+Visual Recognition
+ ↓
+Notation Recognition
+ ↓
+Observations
+ ↓
+Candidates
+ ↓
+Validation
+ ↓
+Canonical Representation
+```
+
+OCR uncertainty shall remain attached to the recognition result.
+
+---
+
+# 173. Audio
+
+Audio pipeline:
+
+```text
+Recording
+ ↓
+Signal Processing
+ ↓
+Feature Detection
+ ↓
+Observations
+ ↓
+Candidate Events
+ ↓
+Contextual Interpretation
+ ↓
+Canonical Representation
+```
+
+Audio-derived symbolic material shall retain uncertainty and source linkage.
+
+---
+
+# 174. I/O Architecture
+
+Input adapters:
+
+```text
+MIDIImporter
+MusicXMLImporter
+MEIImporter
+ABCImporter
+AudioAnalyzer
+OCRImporter
+```
+
+Output adapters:
+
+```text
+MIDIRenderer
+MusicXMLRenderer
+MEIRenderer
+NotationRenderer
+AudioRenderer
+```
+
+All adapters communicate with the canonical domain through explicit mapping layers.
+
+---
+
+# 175. MIDI Boundary
+
+MIDI shall not define the core model.
+
+MIDI 1.0's channels, ticks and message structure are transport/encoding concepts rather than universal musical semantics.
+
+The architecture must also avoid assuming that MIDI 1.0 is the ceiling of performance representation. Current MIDI 2.0 introduces UMP and higher-resolution/per-note expressive capabilities, reinforcing the need for a richer performance boundary.
+
+---
+
+# 176. MIDI Mapping
+
+The MIDI adapter may map:
+
+```text
+NoteEvent
+ →
+MIDI note messages
+```
+
+but may lose:
+
+```text
+spelling
+analytical meaning
+exact notation
+non-MIDI tuning information
+structural semantics
+```
+
+Loss must be reported.
+
+---
+
+# 177. MusicXML / MEI Boundary
+
+MusicXML and MEI shall remain external representations.
+
+However, notation-specific information that cannot be reduced safely to canonical events shall remain available through a notation/document layer.
+
+The architecture shall not make the mistake of treating notation as disposable merely because abstract musical events are canonical.
+
+MEI's current model is a useful reminder that machine-readable music documents can encompass structural, notational, analytical, performance and linking information beyond a simple event sequence.
+
+---
+
+# 178. Loss Model
+
+Conversions shall report:
+
+```text
+preserved
+converted
+approximated
+discarded
+unknown
+```
+
+Example:
+
+```text
+MIDI import:
+    sounding pitch = preserved
+    velocity = preserved as performance data
+    spelling = unknown
+    engraving = unavailable
+```
+
+---
+
+# 179. Round-Trip Semantics
+
+Round-trip testing shall distinguish:
+
+```text
+byte-identical round trip
+structural round trip
+canonical round trip
+semantic round trip
+lossy round trip
+```
+
+Not every format can support byte-identical reconstruction.
+
+---
+
+# 180. Corpus Architecture
+
+Corpus processing shall occur above the canonical representation.
+
+Pipeline:
+
+```text
+Corpus Source
+ ↓
+Import
+ ↓
+Normalization
+ ↓
+Canonical Representation
+ ↓
+Feature Extraction
+ ↓
+Indexing
+ ↓
+Statistics
+```
+
+Corpus statistics shall never mutate foundational music.
+
+---
+
+# 181. Corpus Versioning
+
+Analyses shall record:
+
+```text
+corpus_version
+importer_version
+normalizer_version
+feature_extractor_version
+analysis_version
+configuration
+```
+
+---
+
+# 182. Corpus Provenance
+
+Every corpus-derived claim shall be traceable to:
+
+```text
+corpus
+documents
+normalization
+feature extraction
+analysis procedure
+configuration
+```
+
+---
+
+# 183. Plugin Architecture
+
+Plugins may provide:
+
+```text
+theory frameworks
+analysis algorithms
+generators
+transformations
+importers
+exporters
+ML providers
+visualizations
+```
+
+---
+
+# 184. Plugin Contract
+
+A plugin shall declare:
+
+```text
+plugin_id
+version
+capabilities
+dependencies
+configuration_schema
+supported_frameworks
+input types
+output types
+permissions
+```
+
+---
+
+# 185. Plugin Dependency Rules
+
+A plugin may depend on lower-level interfaces.
+
+A plugin shall not alter foundational semantics merely because its theory requires additional concepts.
+
+If a plugin repeatedly requires a missing foundational abstraction, the architecture shall be reviewed.
+
+---
+
+# 186. Plugin Security
+
+Untrusted plugins shall not automatically receive:
+
+```text
+filesystem access
+network access
+process execution
+database access
+credential access
+```
+
+Potential mechanisms:
+
+```text
+sandboxing
+process isolation
+capability APIs
+resource limits
+permission declarations
+```
+
+---
+
+# 187. External Input Security
+
+The following shall be treated as hostile input boundaries:
+
+```text
+MIDI
+MusicXML
+MEI
+PDF
+images
+audio
+archives
+serialized objects
+plugins
+scripts
+ML models
+user-defined rules
+external corpus data
+```
+
+Parsers shall be hardened and fuzz-tested.
+
+---
+
+# 188. Declarative Rules
+
+User-created rules should preferably use a declarative language.
+
+Example:
+
+```text
+Rule
+    framework
+    scope
+    predicate
+    severity
+    explanation
+```
+
+Arbitrary executable code shall not be the default representation of a rule.
+
+---
+
+# 189. Query Safety
+
+Queries shall have:
+
+```text
+resource limits
+pagination
+maximum recursion depth
+timeout
+memory limits
+```
+
+especially for large corpora and relationship traversal.
+
+---
+
+# 190. Module Architecture
+
+Initial modular monolith:
+
+```text
+music-core
+music-identity
+music-time
+music-pitch
+music-events
+music-containers
+music-structure
+music-semantics
+music-context
+music-relationship
+music-interpretation
+music-provenance
+music-theory
+music-rules
+music-analysis
+music-transform
+music-generation
+music-query
+music-performance
+music-notation
+music-io
+music-corpus
+music-security
+```
+
+---
+
+# 191. Dependency Direction
+
+Dependencies shall point toward foundational abstractions.
+
+Conceptually:
+
+```text
+identity
+   ↑
+core
+   ↑
+time / pitch
+   ↑
+events
+   ↑
+containers / structures
+   ↑
+semantics / relationships
+   ↑
+context / interpretation
+   ↑
+theory
+   ↑
+analysis / transformation / generation
+   ↑
+I/O / applications
+```
+
+Notation and performance may depend on canonical domain abstractions but shall not redefine them.
+
+---
+
+# 192. Theory Leakage Prevention
+
+Forbidden:
+
+```text
+Pitch
+    knows SpeciesCounterpoint
+```
+
+Forbidden:
+
+```text
+NoteEvent
+    contains RomanNumeral
+```
+
+Forbidden:
+
+```text
+Duration
+    knows BeethovenStyle
+```
+
+Preferred:
+
+```text
+SpeciesCounterpointFramework
+    consumes
+Canonical Musical Interfaces
+```
+
+---
+
+# 193. Architecture Tests
+
+Automated architecture tests shall verify:
+
+```text
+core cannot import theory
+pitch cannot import harmony
+time cannot import notation
+domain cannot import persistence
+domain cannot import SQL
+theory cannot mutate canonical events
+plugins cannot bypass capability boundaries
+```
+
+---
+
+# 194. Application Architecture
+
+Applications shall consume domain services.
+
+Examples:
+
+```text
+Composition
+Practice
+Ear Training
+Analysis
+Corpus
+OCR
+Audio
+Notation
+Performance
+```
+
+Applications shall not implement duplicate music semantics.
+
+---
+
+# 195. Validation Architecture
+
+Validation shall occur at several levels:
+
+```text
+schema validation
+object validation
+domain invariant validation
+relationship validation
+context validation
+framework validation
+constraint validation
+serialization validation
+rendering validation
+security validation
+```
+
+---
+
+# 196. Domain Invariants
+
+Examples:
+
+```text
+Duration >= 0
+Time values are valid
+Pitch values conform to declared pitch model
+Relationship endpoints are valid
+Entity IDs are unique
+Required provenance exists
+Transformation outputs are valid
+Canonical serialization is valid
+Version references are valid
+```
+
+---
+
+# 197. Relationship Invariants
+
+Examples:
+
+```text
+source exists
+target exists
+predicate exists
+predicate permits source type
+predicate permits target type
+required context exists
+required provenance exists
+```
+
+---
+
+# 198. Provenance Invariants
+
+Examples:
+
+```text
+ancestor references exist
+activity references exist
+agent references exist
+mandatory derivation edges exist
+cycles are prohibited where DAG semantics are declared
+```
+
+---
+
+# 199. Framework Validation
+
+Framework validation shall remain isolated.
+
+Example:
+
+```text
+Framework:
+    First Species Counterpoint
+
+Rule:
+    Parallel Fifth
+
+Target:
+    VoicePair
+
+Result:
+    fail
+```
+
+The rule shall not modify the notes.
+
+---
+
+# 200. Transformation Validation
+
+Transformations shall test:
+
+```text
+parameter validity
+domain compatibility
+invariant preservation
+provenance
+event mapping
+output validity
+```
+
+---
+
+# 201. Testing Strategy
+
+Required test categories:
+
+```text
+Unit
+Property-Based
+Invariant
+Golden
+Serialization
+Migration
+Round-Trip
+Relationship
+Provenance
+Context
+Theory
+Transformation
+Analysis Regression
+Generation Validation
+Corpus Regression
+Performance
+Security
+Fuzz
+```
+
+---
+
+# 202. Property-Based Testing
+
+Foundational value objects should use property-based tests.
+
+Examples:
+
+```text
+duration never becomes negative
+augmentation by factor 1 preserves value
+double inversion under same axis restores pitch
+retrograde twice restores sequence
+serialization/deserialization preserves canonical value
+```
+
+---
+
+# 203. Golden Tests
+
+Critical transformations shall have version-controlled golden outputs.
+
+Example:
+
+```text
+Input:
+    C E G
+
+Operation:
+    transpose +P5
+
+Expected:
+    G B D
+```
+
+The expected representation shall include provenance.
+
+---
+
+# 204. Migration Tests
+
+Every schema migration shall test:
+
+```text
+old input
+ →
+migration
+ →
+new canonical form
+```
+
+Migrations shall be deterministic.
+
+---
+
+# 205. Analysis Regression
+
+Representative corpora shall be retained.
+
+Algorithm changes shall make result differences visible.
+
+---
+
+# 206. Generation Regression
+
+Generation tests shall verify:
+
+```text
+constraints satisfied
+required provenance exists
+seed recorded
+result structurally valid
+```
+
+Exact output equality shall be required only where deterministic behavior is contractually guaranteed.
+
+---
+
+# 207. Security Testing
+
+Security tests shall include:
+
+```text
+parser fuzzing
+malformed serialization
+malicious XML
+zip bombs
+oversized files
+resource exhaustion
+plugin isolation
+rule injection
+query abuse
+```
+
+---
+
+# 208. Observability
+
+The platform shall support:
+
+```text
+structured logs
+traces
+metrics
+analysis identifiers
+generation identifiers
+correlation IDs
+provenance IDs
+```
+
+Observability data shall not alter domain semantics.
+
+---
+
+# 209. Reproducibility Record
+
+A reproducible activity shall record:
+
+```text
+activity_id
+input_ids
+input_versions
+algorithm_version
+framework_version
+configuration
+random_seed
+environment information where necessary
+output_ids
+```
+
+---
+
+# 210. Determinism
+
+Analysis should be deterministic wherever practical.
+
+Generation may be stochastic.
+
+If an algorithm cannot guarantee determinism, its reproducibility contract shall state why.
+
+---
+
+# 211. Style Model
+
+Style shall not merely be a list of rules.
+
+Conceptually:
+
+```text
+Style
+    frameworks
+    constraints
+    preferences
+    tendencies
+    probability_models
+    formal conventions
+    instrumentation
+    harmonic vocabulary
+    rhythmic vocabulary
+```
+
+Style is contextual and versioned.
+
+---
+
+# 212. Statistical Style
+
+A style model may state:
+
+```text
+P(X | context) = 0.72
+```
+
+It shall not automatically state:
+
+```text
+X is valid
+```
+
+or:
+
+```text
+X is required
+```
+
+---
+
+# 213. Formal Analysis
+
+Formal analysis shall produce contextual interpretations.
+
+Example:
+
+```text
+Interpretation
+    target = measures 1–8
+    claim = antecedent
+    framework = sentence_period_theory
+    uncertainty = ...
+```
+
+Underlying events remain unchanged.
+
+---
+
+# 214. Example: C-E-G
+
+Given:
+
+```text
+C4
+E4
+G4
+```
+
+the canonical model contains events:
+
+```text
+N1
+N2
+N3
+```
+
+Derived:
+
+```text
+Interval N1→N2
+Interval N2→N3
+Sonority S1
+```
+
+Possible interpretation:
+
+```text
+Chord:
+    C major
+```
+
+under one framework.
+
+Possible contextual interpretations:
+
+```text
+I in C major
+VI in E minor
+```
+
+The events themselves remain unchanged.
+
+---
+
+# 215. Example: Ambiguous Spelling
+
+Observation:
+
+```text
+audio estimate ≈ C#
+```
+
+Candidates:
+
+```text
+C#
+Db
+```
+
+The system retains both.
+
+A later context may select:
+
+```text
+Db
+```
+
+because the surrounding key context supports that spelling.
+
+The original observation remains intact.
+
+---
+
+# 216. Example: OCR
+
+OCR produces:
+
+```text
+Observation O1
+    candidate:
+        C# .73
+        Db .19
+        C .08
+```
+
+The observation is not equivalent to:
+
+```text
+NoteEvent = C#
+```
+
+until an explicit resolution process creates that assertion.
+
+---
+
+# 217. Example: Harmonic Ambiguity
+
+Events:
+
+```text
+C E G
+```
+
+may produce:
+
+```text
+Sonority S1
+```
+
+with interpretations:
+
+```text
+C major chord
+I in C major
+VI in E minor
+```
+
+These interpretations may coexist.
+
+---
+
+# 218. Example: Transformation
+
+Input:
+
+```text
+C E G
+```
+
+Transformation:
+
+```text
+Transposition(+P5)
+```
+
+Output:
+
+```text
+G B D
+```
+
+Output events shall receive new identities.
+
+Example:
+
+```text
+N1 → N4
+N2 → N5
+N3 → N6
+```
+
+with provenance:
+
+```text
+activity = TranspositionActivity
+parameter = +P5
+```
+
+---
+
+# 219. Example: Ornamentation
+
+Input:
+
+```text
+C4 quarter
+```
+
+Transformation:
+
+```text
+ornamentation = upper_neighbor
+```
+
+may produce:
+
+```text
+D4 eighth
+C4 eighth
+```
+
+The provenance must support:
+
+```text
+one source event
+    →
+multiple derived events
+```
+
+---
+
+# 220. Example: Performance
+
+Symbolic:
+
+```text
+C4
+onset = 1/4
+duration = 1/4
+```
+
+Performance:
+
+```text
+actual_onset = 1.023 sec
+actual_release = 1.492 sec
+velocity = 74
+```
+
+The performance realization does not modify symbolic MusicalTime.
+
+---
+
+# 221. Example: Audio
+
+Recording:
+
+```text
+AudioArtifact
+```
+
+Observation:
+
+```text
+onset = 1.24 sec
+pitch = 440 Hz
+probability = ...
+```
+
+Candidate:
+
+```text
+A4
+```
+
+Interpretation:
+
+```text
+symbolic note event
+```
+
+All stages retain provenance.
+
+---
+
+# 222. Example: Motif Search
+
+Query:
+
+```text
+source = region A
+pitch = interval sequence
+rhythm = exact
+transposition = allowed
+similarity = approximate
+```
+
+Result:
+
+```text
+Match
+    region
+    similarity
+    criteria
+    evidence
+```
+
+A match is not automatically a confirmed motif occurrence.
+
+---
+
+# 223. Example: Counterpoint
+
+```text
+Cantus Firmus
+ ↓
+Species Framework
+ ↓
+Constraints
+ ↓
+Candidate Generation
+ ↓
+Rule Evaluation
+ ↓
+Candidate Ranking
+ ↓
+Validation
+ ↓
+Canonical Material
+```
+
+The Species framework remains outside the foundational kernel.
+
+---
+
+# 224. Example: Practice Generation
+
+```text
+Practice Intent
+ ↓
+Instrument Capability
+ ↓
+Technique
+ ↓
+Difficulty Model
+ ↓
+Constraints
+ ↓
+Generator
+ ↓
+Validator
+ ↓
+Canonical Material
+ ↓
+Notation / MIDI / Audio
+```
+
+---
+
+# 225. Example: Corpus Analysis
+
+```text
+Corpus
+ ↓
+Import
+ ↓
+Normalization
+ ↓
+Canonical Representation
+ ↓
+Feature Extraction
+ ↓
+Index
+ ↓
+Statistical Model
+ ↓
+Evidence
+```
+
+Corpus statistics remain derived knowledge.
+
+---
+
+# 226. Work Model
+
+The system shall distinguish:
+
+```text
+Work
+Edition
+Arrangement
+Revision
+Performance
+Recording
+Analysis
+```
+
+A work and its realizations are not identical.
+
+---
+
+# 227. Work Identity
+
+The system shall permit:
+
+```text
+same work
+different edition
+different arrangement
+different performance
+different recording
+```
+
+without collapsing them into one object.
+
+---
+
+# 228. Source Variants
+
+The architecture shall eventually support:
+
+```text
+variant reading
+editorial decision
+source disagreement
+uncertain reading
+```
+
+without forcing one source to become universally authoritative.
+
+---
+
+# 229. Scholarly Annotation
+
+Scholarly annotations should support:
+
+```text
+claim
+target
+author
+source
+citation
+framework
+evidence
+uncertainty
+date
+status
+```
+
+---
+
+# 230. Semantic Extension
+
+New semantic concepts shall preferably be introduced as:
+
+```text
+framework-defined semantic objects
+relationships
+interpretations
+procedures
+annotations
+```
+
+rather than modifying core classes.
+
+---
+
+# 231. Core Extension Rule
+
+A new concept may enter the foundational kernel only if:
+
+1. it is framework-neutral;
+2. multiple subsystems require it;
+3. it cannot reasonably be represented as an extension;
+4. its semantics are stable;
+5. its addition does not introduce theory leakage.
+
+---
+
+# 232. Architecture Freeze Criteria
+
+Phase 0 shall not freeze until the team has explicitly resolved:
+
+```text
+identity
+versioning
+occurrence
+time
+pitch
+partial information
+relationships
+context
+provenance
+canonicalization
+serialization
+validation
+```
+
+---
+
+# 233. Phase 1 Kernel
+
+Phase 1 shall implement only:
+
+```text
+EntityID
+Duration
+MusicalTime
+TimeSpan
+PitchIdentity
+PitchSpelling
+NoteEvent
+Voice
+RelationshipReference
+ProvenanceReference
+```
+
+No advanced theory is required.
+
+---
+
+# 234. Phase 1 Vertical Slice
+
+Create:
+
+```text
+C4 quarter
+E4 quarter
+G4 quarter
+```
+
+Then derive:
+
+```text
+intervals
+sonority
+```
+
+Then create:
+
+```text
+Context:
+    C major
+```
+
+and interpretations:
+
+```text
+C major sonority
+I in C major
+```
+
+and another context:
+
+```text
+E minor
+```
+
+with:
+
+```text
+VI in E minor
+```
+
+Then transform:
+
+```text
+C E G
+```
+
+to:
+
+```text
+G B D
+```
+
+and preserve lineage.
+
+---
+
+# 235. Phase 1 Serialization Test
+
+Serialize:
+
+```text
+events
+voice
+sonority
+context
+interpretations
+relationships
+provenance
+```
+
+Deserialize.
+
+Verify:
+
+```text
+identity preserved
+version preserved
+canonical equality preserved
+relationships preserved
+interpretations preserved
+context preserved
+provenance preserved
+```
+
+---
+
+# 236. Phase 2 Temporal / Score Layer
+
+Implement:
+
+```text
+Meter
+MeterMap
+Measure
+Clef
+Staff
+Part
+NotationPosition
+Tempo
+TempoMap
+Dynamics
+Articulation
+```
+
+Add tests for:
+
+```text
+pickup
+tuplets
+multiple voices
+tempo changes
+irregular measures
+```
+
+---
+
+# 237. Phase 3 Pitch / Semantics
+
+Implement:
+
+```text
+PitchClass
+PitchRealization
+Tuning
+Interval
+Sonority
+Scale
+ScaleDegree
+Contour
+RhythmicPattern
+```
+
+---
+
+# 238. Phase 4 Context / Interpretation
+
+Implement:
+
+```text
+Context
+Observation
+Candidate
+Hypothesis
+Interpretation
+Evidence
+Uncertainty
+Framework
+```
+
+This phase is foundational and shall not be postponed indefinitely.
+
+---
+
+# 239. Phase 5 Structures
+
+Implement:
+
+```text
+Motif
+Occurrence
+Figure
+Phrase
+Cadence
+Theme
+Section
+Movement
+Work
+```
+
+---
+
+# 240. Phase 6 Relationships / Provenance
+
+Implement:
+
+```text
+Relationship
+Predicate
+Evidence
+ProvenanceActivity
+ProvenanceAgent
+Derivation
+AuditEvent
+```
+
+---
+
+# 241. Phase 7 Transformation
+
+Implement:
+
+```text
+Transposition
+Inversion
+Retrograde
+RetrogradeInversion
+Augmentation
+Diminution
+Fragmentation
+Expansion
+Contraction
+Displacement
+Ornamentation
+```
+
+---
+
+# 242. Phase 8 Analysis
+
+Implement:
+
+```text
+Interval Analysis
+Scale Analysis
+Chord Identification
+Key Estimation
+Voice Leading
+Cadence Detection
+Motif Detection
+Phrase Segmentation
+```
+
+All outputs shall use the interpretation/evidence/uncertainty architecture.
+
+---
+
+# 243. Phase 9 Theory Framework
+
+Implement:
+
+```text
+Framework
+Rule
+Constraint
+Preference
+Heuristic
+Tendency
+Procedure
+StatisticalModel
+RuleEvaluation
+```
+
+---
+
+# 244. Phase 10 Species Counterpoint
+
+Implement independent framework modules:
+
+```text
+First Species
+Second Species
+Third Species
+Fourth Species
+Fifth Species
+```
+
+No kernel changes should be permitted merely for convenience.
+
+---
+
+# 245. Phase 11 Common-Practice Harmony
+
+Implement:
+
+```text
+Roman Numeral Analysis
+Harmonic Function
+Voice Leading
+Cadence
+Tonicization
+Modulation
+```
+
+---
+
+# 246. Phase 12 Generation
+
+Implement:
+
+```text
+Candidate
+CandidateEvaluator
+ConstraintSolver
+Search
+Optimizer
+GenerationPlan
+GenerationRecord
+```
+
+---
+
+# 247. Phase 13 Hierarchical Generation
+
+Implement:
+
+```text
+Motif
+Basic Idea
+Phrase
+Theme
+Section
+Movement
+```
+
+with recursive generator composition.
+
+---
+
+# 248. Phase 14 I/O
+
+Implement:
+
+```text
+MIDI
+MusicXML
+MEI
+ABC
+```
+
+with explicit loss reporting.
+
+---
+
+# 249. Phase 15 Corpus
+
+Implement:
+
+```text
+Corpus ingestion
+Normalization
+Feature extraction
+Pattern search
+Statistics
+Style models
+Regression fixtures
+```
+
+---
+
+# 250. Phase 16 OCR
+
+Implement:
+
+```text
+notation recognition
+event recognition
+candidate generation
+uncertainty
+validation
+canonicalization
+```
+
+---
+
+# 251. Phase 17 Audio
+
+Implement:
+
+```text
+onset detection
+pitch detection
+beat detection
+audio-to-symbolic conversion
+performance analysis
+```
+
+---
+
+# 252. Phase 18 Advanced Frameworks
+
+Add independently:
+
+```text
+Schoenberg
+Persichetti
+Jazz Harmony
+Neo-Riemannian Theory
+Schenkerian Analysis
+Set Theory
+Modal Theory
+Microtonality
+Contemporary Systems
+```
+
+No advanced framework may require kernel changes unless a genuine framework-neutral abstraction is missing.
+
+---
+
+# 253. Performance Optimization
+
+Only after profiling should the platform introduce:
+
+```text
+temporal indexes
+pitch indexes
+interval indexes
+pattern indexes
+relationship indexes
+provenance indexes
+corpus indexes
+```
+
+---
+
+# 254. Graph Storage
+
+A graph database shall not be mandatory.
+
+The relationship model must work with:
+
+```text
+relational storage
+document storage
+key-value storage
+graph storage
+in-memory structures
+```
+
+---
+
+# 255. Query Optimization
+
+Stable domain APIs shall survive storage changes.
+
+Example:
+
+```text
+find_notes(region)
+```
+
+may initially scan memory and later use:
+
+```text
+temporal index
+```
+
+without changing callers.
+
+---
+
+# 256. Architecture Risks
+
+## Risk 1 — Scope Explosion
+
+Mitigation:
+
+```text
+tiny kernel
+phased development
+vertical slices
+extension boundaries
+```
+
+## Risk 2 — Ontology Explosion
+
+Mitigation:
+
+```text
+prefer relationships
+derive values
+use contextual interpretations
+avoid theory-specific core classes
+```
+
+## Risk 3 — Theory Leakage
+
+Mitigation:
+
+```text
+dependency architecture tests
+framework isolation
+```
+
+## Risk 4 — Interpretation Becomes Fact
+
+Mitigation:
+
+```text
+observation
+hypothesis
+interpretation
+evidence
+uncertainty
+provenance
+```
+
+## Risk 5 — Notation Contamination
+
+Mitigation:
+
+```text
+canonical musical model
++
+notation/document model
+```
+
+## Risk 6 — Performance Contamination
+
+Mitigation:
+
+```text
+symbolic event model
++
+performance realization model
+```
+
+## Risk 7 — Time Model Failure
+
+Mitigation:
+
+```text
+exact rational symbolic time
++
+explicit temporal anchors
++
+tempo mappings
++
+performance time
+```
+
+## Risk 8 — Pitch Model Failure
+
+Mitigation:
+
+```text
+identity
++
+spelling
++
+realization
++
+tuning
++
+trajectory
+```
+
+## Risk 9 — Provenance Explosion
+
+Mitigation:
+
+```text
+compact provenance references
+lazy expansion
+indexed lineage
+```
+
+## Risk 10 — Graph Overuse
+
+Mitigation:
+
+```text
+first-class relationships
++
+ordinary storage initially
++
+graph optimization only when justified
+```
+
+## Risk 11 — Serialization Becomes Architecture
+
+Mitigation:
+
+```text
+domain-first design
+```
+
+## Risk 12 — Identity Confusion
+
+Mitigation:
+
+```text
+entity identity
++
+version
++
+occurrence
++
+provenance
+```
+
+## Risk 13 — Uncertainty Collapse
+
+Mitigation:
+
+```text
+unknown
++
+candidate sets
++
+probabilistic models
++
+competing hypotheses
+```
+
+## Risk 14 — ML Contamination
+
+Mitigation:
+
+```text
+ML output enters through Observation,
+Candidate, Prediction, or Score contracts.
+```
+
+## Risk 15 — Plugin Security
+
+Mitigation:
+
+```text
+capabilities
+sandboxing
+resource limits
+```
+
+---
+
+# 257. Final Mature Architecture
+
+```text
+                         USER / APPLICATION
+                                │
+                                ▼
+                       NATURAL LANGUAGE
+                                │
+                                ▼
+                         INTENT COMPILER
+                                │
+                                ▼
+                        STRUCTURED INTENT
+                                │
+             ┌──────────────────┼──────────────────┐
+             ▼                  ▼                  ▼
+         ANALYSIS          GENERATION       TRANSFORMATION
+             │                  │                  │
+             └──────────────────┼──────────────────┘
+                                ▼
+                         THEORY / KNOWLEDGE
+                                │
+              ┌─────────────────┼─────────────────┐
+              ▼                 ▼                 ▼
+            RULES          CONSTRAINTS        MODELS
+              │                 │                 │
+              └─────────────────┼─────────────────┘
+                                ▼
+                         CONTEXT RESOLUTION
+                                │
+                                ▼
+                   INTERPRETATION / ASSERTION
+                                │
+               ┌────────────────┼────────────────┐
+               ▼                ▼                ▼
+         RELATIONSHIPS       EVIDENCE       UNCERTAINTY
+               │                │                │
+               └────────────────┼────────────────┘
+                                ▼
+                     CANONICAL MUSICAL DOMAIN
+                                │
+       ┌────────────────────────┼────────────────────────┐
+       ▼                        ▼                        ▼
+      TIME                     PITCH                    EVENTS
+       │                        │                        │
+       └────────────────────────┼────────────────────────┘
+                                ▼
+                       MUSICAL REPRESENTATION
+                                │
+       ┌────────────────────────┼────────────────────────┐
+       ▼                        ▼                        ▼
+   STRUCTURES               CONTAINERS              OCCURRENCES
+       │                        │                        │
+       └────────────────────────┼────────────────────────┘
+                                │
+        ┌───────────────────────┼───────────────────────┐
+        ▼                       ▼                       ▼
+     NOTATION               PERFORMANCE              RECORDING
+        │                       │                       │
+        ▼                       ▼                       ▼
+     SCORE/XML/MEI          MIDI/REALIZATION          AUDIO
+```
+
+Cross-cutting:
+
+```text
+┌───────────────────────────────────────────────────────────────┐
+│ Identity │ Versioning │ Provenance │ Context │ Uncertainty   │
+│ Validation │ Security │ Reproducibility │ Audit │ Caching    │
+│ Observability │ Capability Management │ Migration            │
+└───────────────────────────────────────────────────────────────┘
+```
+
+---
+
+# 258. What V4 Changes Fundamentally
+
+V4 preserves the central thesis of V3 but makes several distinctions normative.
+
+The most important are:
+
+```text
+Entity
+≠
+Occurrence
+```
+
+```text
+Observation
+≠
+Hypothesis
+≠
+Interpretation
+```
+
+```text
+Provenance
+≠
+Audit History
+```
+
+```text
+MusicalTime
+≠
+NotatedPosition
+≠
+PerformanceTime
+≠
+AudioTime
+```
+
+```text
+PitchIdentity
+≠
+PitchSpelling
+≠
+PitchRealization
+≠
+PitchTrajectory
+```
+
+```text
+NoteEvent
+≠
+PerformanceEvent
+≠
+Recording Signal
+```
+
+```text
+Sonority
+≠
+Chord Interpretation
+```
+
+```text
+Rule
+≠
+Constraint
+≠
+Preference
+≠
+Heuristic
+≠
+Tendency
+≠
+Statistical Model
+```
+
+```text
+Domain Model
+≠
+Canonical Representation
+≠
+Serialization
+≠
+Persistence
+```
+
+```text
+Work
+≠
+Edition
+≠
+Arrangement
+≠
+Performance
+≠
+Recording
+```
+
+These distinctions are the primary foundation of the architecture.
+
+---
+
+# 259. Final Recommendation
+
+V3 should be regarded as a **successful architectural thesis and design direction**, but not as the final implementation contract.
+
+The architecture should now freeze around V4's principles:
+
+```text
+small foundational kernel
++
+exact symbolic time
++
+general pitch/tuning model
++
+explicit events
++
+occurrences
++
+containers
++
+structures
++
+first-class relationships
++
+context
++
+observation
++
+hypothesis
++
+interpretation
++
+evidence
++
+uncertainty
++
+provenance
++
+theory frameworks
++
+rules
++
+constraints
++
+preferences
++
+heuristics
++
+statistical models
++
+pure transformations
++
+analysis
++
+generation
++
+notation
++
+performance
++
+recording
++
+I/O adapters
++
+storage abstraction
+```
+
+The system should **not** attempt to freeze every future musical concept.
+
+Instead, it should freeze the **semantic rules that govern how new concepts are introduced**.
+
+The foundational kernel should therefore remain intentionally small.
+
+---
+
+# 260. Recommended Phase-0 Deliverables
+
+Before writing substantial production code, the team should produce these normative specifications:
+
+```text
+A. Identity and Version Specification
+B. Domain Ontology Specification
+C. Temporal Semantics Specification
+D. Pitch and Tuning Specification
+E. Musical Event Specification
+F. Container and Structure Specification
+G. Relationship Specification
+H. Context Specification
+I. Observation / Hypothesis / Interpretation Specification
+J. Evidence and Uncertainty Specification
+K. Provenance Specification
+L. Theory / Rule / Constraint Specification
+M. Transformation Specification
+N. Canonical IR Specification
+O. Serialization Specification
+P. Persistence Specification
+Q. Query Semantics Specification
+R. Validation Specification
+S. Plugin / Capability Specification
+T. I/O and Loss Specification
+U. Testing Specification
+```
+
+These specifications should be mutually consistent before Phase 1 is declared complete.
+
+---
+
+# 261. Ultimate Architectural Objective
+
+The platform is not:
+
+> software that knows music theory.
+
+It is:
+
+> **a general-purpose computational language and platform for representing musical material, temporal organization, pitch, events, structures, relationships, observations, interpretations, context, evidence, uncertainty, provenance, theoretical frameworks, transformations, constraints, performances, notation, recordings, and generation processes.**
+
+The system must be able to represent:
+
+```text
+what exists
+what occurred
+where it occurred
+when it occurred
+how it is organized
+what relates to what
+what was observed
+what is hypothesized
+what is interpreted
+under which framework
+with what evidence
+with what uncertainty
+by whom or by what process
+from which source
+through which transformation
+under which constraints
+according to which model
+and with what resulting realization
+```
+
+while keeping all of those dimensions computationally distinguishable.
+
+The final governing principle is therefore:
+
+> **Freeze the semantics of the foundation, not the ontology of every future musical idea. Keep the kernel small; make relationships, context, interpretation, uncertainty, provenance, and extension mechanisms first-class; preserve distinctions between symbolic material, notation, performance, and recording; and ensure that no theory, storage system, notation format, statistical model, or generation technology can become the definition of music.**
+ 
