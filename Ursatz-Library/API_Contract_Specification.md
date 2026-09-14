@@ -1,7 +1,7 @@
 # API / Contract Specification — Software Interaction Layer
 
 **Last verified against repo state:** 2026-09-14 (self-audit pass, no repo changes since 2026-09-13). This is a Phase-1 kernel spec, scoped to
-the 10 Phase-1 objects + 3 reference types — unchanged by the Framework Stage session or
+the 10 Phase-1 objects + 3 reference types, unchanged by the Framework Stage session or
 since.
 
 Source: Domain Specification, Technical Design Document, Dependency & Layer Specification.
@@ -34,14 +34,14 @@ NoteEvent's category boundary, TimeSpan's boundary vocabulary.
 
 ## Cross-cutting rules
 
-- **C1 Immutability** — every Value object's constructors produce a fully-formed, immutable
+- **C1 Immutability:** every Value object's constructors produce a fully-formed, immutable
   instance; no setters anywhere.
-- **C2 Entity revision, not mutation** — NoteEvent and Voice are never mutated in place.
+- **C2 Entity revision, not mutation:** NoteEvent and Voice are never mutated in place.
   Identity (EntityID) stays stable across revisions; each revision is a new construction.
   NoteEvent's new construction additionally carries a ProvenanceReference linking to its
   source (Law 20, see C6). Voice's membership-revision mechanics remain deferred to a future
   Container and Structure Specification.
-- **C3 Fail-fast validation** — every constructor validates Domain Spec invariants
+- **C3 Fail-fast validation:** every constructor validates Domain Spec invariants
   synchronously and rejects on violation (`InvariantViolation`). No "construct now, validate
   later" path.
 - **C4 Reference opacity** — constructors/queries touching a reference type operate only on

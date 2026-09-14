@@ -10,7 +10,7 @@ Source: Technical Design Document, System Registry, Dependency & Layer Specifica
 
 Phase-1 ontology objects below are implemented and Registry-registered, including
 `VoiceReference`, `RelationshipReference`, and `ProvenanceReference`. Two items remain
-genuinely open — see Open Issues.
+genuinely open; see Open Issues.
 
 ## Normative rule: reference-only dependency vs. module dependency
 
