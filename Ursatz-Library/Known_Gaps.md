@@ -1,6 +1,7 @@
 # Ursatz Library — Known Gaps
 
-**Last verified against repo state:** 2026-09-14 (self-audit pass, no repo changes since 2026-09-13), commit `9fd5895` (PR #46).
+**Last verified against repo state:** 2026-09-14, commit `<pending>` (PR #48, chord
+subset-match stopgap).
 
 Each entry: what's missing/limited, why it's a disclosed cut rather than a silent one, and
 what it blocks.
@@ -83,31 +84,28 @@ of these changes; recommend a dedicated branch if it needs closing.
 
 ## Analyzer-specific limitations (by design, not bugs)
 
-- **Chord-region matching exact-match rigidity ("Problem B," `sonority_builder.h`).**
-  `common_practice_identify_triad` (`frameworks/common-practice-minimal/triad_identification.c`)
-  requires a Sonority's notes to reduce to exactly 3 distinct scale degrees matching a diatonic
-  triad, with no tolerance for extra non-chord tones. This extends to seventh-chord matching too
-  (inherited by construction). Partially mitigated by the new beat-grid Sonority construction
-  (see above) but not eliminated: it surfaces concretely on Field 1 (melody + accompaniment
-  simultaneously — a beat commonly carries a passing/neighbor tone alongside the underlying
-  triad, giving 4+ distinct degrees and no match at all, even when the harmony is unambiguous).
-  **Approved stopgap (architect decision, 2026-09-14), not yet implemented:** accept a triad
-  match when its 3 degrees are a *subset* of the beat's distinct degrees (extra degrees ignored
-  as passing tones), with a naive first-match tie-break rather than duration/beat-strength
-  weighting. Known, accepted weaknesses of this stopgap: (1) an ambiguous beat whose degree set
-  satisfies two triads at once (e.g. `{1,3,5,6}` fits both I and vi) can silently return the
-  wrong one, where today's exact-match at least fails loudly instead of guessing; (2) two or
-  more simultaneous non-chord degrees still break the match entirely; (3) no metric/duration
-  weighting, so ties aren't resolved by "which triad accounts for more of the beat's sounding
-  time." A real duration-weighted fix was deliberately deferred rather than built now: only one
-  fixture (Field 1) currently demonstrates the need, and building metric weighting against a
-  single hypothetical case is premature relative to running the full 5-piece corpus first and
-  seeing which failures actually occur. Kept in `triad_identification.c` rather than moved to a
-  pre-filtering layer, since a principled non-chord-tone filter would need to know what counts
-  as a passing tone independent of any candidate triad, itself circular without the
-  voice-leading/weighting data this project doesn't have yet. Whoever implements this should log
-  or flag ambiguous-tie cases (multiple triads fit) rather than resolve them silently, so real
-  incidence data comes back from the corpus run instead of being invisible.
+- **Chord-region matching exact-match rigidity ("Problem B," `sonority_builder.h`) —
+  subset-match stopgap shipped (PR #48), still fundamentally insufficient for real
+  multi-voice textures.** `common_practice_identify_triad`/the seventh-chord matcher
+  (`frameworks/common-practice-minimal/`) now accept a match when the triad/seventh's degrees
+  are a *subset* of a beat's distinct degrees (extra degrees ignored as passing tones), naive
+  scan-order tie-break, ambiguous multi-triad ties logged to stderr rather than resolved
+  silently, no public API/signature changes. **Result against Field 1
+  (`tests/fixtures/framework-v1-corpus/Field 1.mid`), confirmed 2026-09-14: only 61/394 beats
+  resolved to any triad at all, and the matched sequence does not cleanly track the known
+  I-V-I-I-I-V-I-I progression.** Root cause: subset-match only tolerates *one* non-chord degree
+  per beat (3 chord tones + 1 passing tone = 4 distinct), but Field 1's melody+accompaniment
+  texture routinely produces 2+ non-chord degrees per beat, which this stopgap does not handle
+  at all — most of Field 1 still fails to match. This confirms weakness (2) from the original
+  approval was not a hypothetical edge case but the dominant failure mode on real multi-voice
+  input. Real disambiguation needs duration/beat-strength-weighted tie-breaking and tolerance
+  for multiple simultaneous non-chord tones, both still deliberately deferred; this is now
+  demonstrated, not speculative, follow-on work, not something to fold into further stopgap
+  patching. The `test_framework_v1_corpus_subset_match_report` test added in PR #48 is
+  informational only (only Field 1's key, Eb major, is independently verified; the other 4
+  pieces run under a placeholder C-major tonic just to exercise the pipeline, so their printed
+  chord labels are not meaningful) — it is not a pass/fail correctness gate and should not be
+  read as one.
 - **Cadence Classification's PAC vs. IAC.** This requires soprano-resolution data that doesn't
   exist anywhere in the codebase, so it reports "authentic (unclassified)" rather than guessing.
   This is correct, disclosed behavior, not a bug.

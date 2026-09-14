@@ -63,7 +63,7 @@ music-theory knowledge as a rule/preference-based symbolic system, not ML.
 | 0 | Ursatz | Done |
 | 1 | Ursatz-Analyzer | Done |
 | 2 | Ursatz + Ursatz-GUI | Done |
-| 2.5 | Ursatz (Framework Stage: 7 new analyzers, seventh chords, real Relationship use) | Code complete. **Verification against the fixed 5-piece reference corpus is not complete** — see below. Two of the two known analysis-quality bugs surfaced during partial verification are now fixed in code (see `Ursatz-Library/Known_Gaps.md`), but the corpus hasn't been re-run to confirm, and 4 of 5 pieces (Clementi, Field No. 1, Field No. 5, Mozart) have never been checked at all. |
+| 2.5 | Ursatz (Framework Stage: 7 new analyzers, seventh chords, real Relationship use) | Code complete. **Verification against the fixed 5-piece reference corpus is not complete** — see below. Two of the two known analysis-quality bugs surfaced during partial verification are now fixed in code (see `Ursatz-Library/Known_Gaps.md`), but the corpus hasn't been re-run to confirm, and 4 of 5 pieces (Clementi, Field No. 1, Field No. 5, Mozart) have never been checked at all. Chord identification's non-chord-tone handling (Problem B) got a subset-match stopgap (PR #48), but running it against Field 1 resolved only 61/394 beats to a triad — real chord-level corpus verification is still blocked on the deferred duration-weighted tie-break fix, now confirmed necessary rather than theoretical. |
 | 3 | Ursatz-Composer (new repo, not started) | Gated on Phase 2.5's verification actually completing, plus a ranking/preference layer that doesn't exist yet |
 
 **Phase 2.5's real exit criterion, still not met:** run the `framework-v1-reference-set`

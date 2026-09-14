@@ -294,3 +294,27 @@ follow-up branch/ticket against `Ursatz`, gating any future measure-indexed test
 
 **What changed in docs:** added a new entry to `Ursatz-Library/Known_Gaps.md`'s
 "Concrete, currently-blocking" section for the hardcoded 4×PPQN denominator.
+
+## 2026-09-14 — Chord subset-match stopgap merged (Ursatz PR #48); Field 1 still mostly unresolved
+
+**What happened:** `fix/chord-non-chord-tones` merged as specified: subset-match for
+`common_practice_identify_triad` and the seventh-chord matcher, naive scan-order tie-break,
+ambiguous-tie logging to stderr, no signature changes. Confirmed the non-4/4 MIDI import gap
+(previous entry) live while building the Field 1 test; correctly left untouched on this branch.
+
+**Real-world result, and why it matters:** running the stopgap against Field 1 resolved only
+61 of 394 beats to any triad at all, with the matched sequence not cleanly tracking the known
+I-V-I-I-I-V-I-I progression. The stopgap's approval (see the 2026-09-14 entry above) explicitly
+accepted "multiple simultaneous non-chord tones still break the match" as a theoretical
+weakness pending real corpus data before investing in a full fix. That data is now in: Field
+1's melody+accompaniment texture routinely produces 2+ non-chord degrees per beat, so this is
+the dominant failure mode on real multi-voice input, not an edge case. The deferred
+duration/beat-strength-weighted tie-break work is now justified by evidence, not a
+hypothetical, and should be picked up as real follow-on work rather than patched around again.
+
+**What changed in docs:** `Ursatz-Library/Known_Gaps.md`'s Problem B entry rewritten to record
+the shipped stopgap, the Field 1 result, and that weakness (2) is now demonstrated rather than
+theoretical; verification header updated to PR #48 (commit hash pending). Noted that the new
+`test_framework_v1_corpus_subset_match_report` test is informational only (only Field 1's key
+is independently verified; other 4 pieces run under a placeholder tonic), not a correctness
+gate.
