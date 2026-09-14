@@ -1,7 +1,7 @@
 # Ursatz Library — Status
 
-**Last verified against repo state:** 2026-09-14 (self-audit pass, no repo changes since 2026-09-13), commit `9fd5895` (PR #46). See
-`Reconciliation_Log.md` for how this was checked.
+**Last verified against repo state:** 2026-09-14, commit `<pending>` (PR #47, MIDI key-signature
+meta-event scanner). See `Reconciliation_Log.md` for how this was checked.
 
 ## Purpose
 
@@ -40,7 +40,13 @@ analyzer. Context, Interval, Scale, ScaleDegree not started.
 **L7 (Theory):** `frameworks/common-practice-minimal` identifies 7 diatonic triads
 (degree-keyed) plus 4 seventh-chord qualities: dominant7, major7, minor7, half-diminished7
 (root-relative interval-set matching; fully-diminished7 is deliberately excluded, since it requires
-harmonic minor, which is out of scope), and major/natural-minor keys. `Constraint`/`Preference`
+harmonic minor, which is out of scope), and major/natural-minor keys. As of PR #47, a
+standalone MIDI key-signature meta-event (`0xFF 0x59`) scanner exists as its own module,
+deliberately isolated from `midi_event_decoder_decode`/`midi_importer_import` (no shared
+call sites, ~20 lines of VLQ/event-skip logic duplicated rather than threading a new out-param
+through 9 existing call sites). It gives callers an authoritative tonic/mode when a file
+declares one, ahead of the candidate-tonic brute-force search below, but does not replace that
+search as the fallback path. `Constraint`/`Preference`
 remain deliberate, documented stubs (`constraint_evaluate()`/`preference_rank()` do real
 null-checking but always return a documented placeholder). `Rule`, `Heuristic`, `Tendency`,
 `StatisticalModel` not started.

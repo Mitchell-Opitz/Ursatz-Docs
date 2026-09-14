@@ -176,3 +176,38 @@ neglected, it was blocked on this tooling existing at all, which it only recentl
 and a short cross-reference in `Ursatz-GUI/Status.md`'s Purpose, so the connection between
 "why GUI grew this way" and "why verification is still pending" is documented in both
 directions instead of living only in the project owner's head.
+
+## 2026-09-14 — Key-detection fixes shipped (Ursatz PR #47, Ursatz-Analyzer PR #5)
+
+**What happened:** `fix/key-detection` merged in both repos. Ursatz gained a standalone MIDI
+key-signature meta-event (`0xFF 0x59`) scanner, isolated from `midi_event_decoder_decode`/
+`midi_importer_import` by design (zero blast radius on those 9 existing call sites, ~20 lines
+of VLQ/event-skip logic duplicated instead). Ursatz-Analyzer wired it in ahead of its existing
+chord-based and brute-force fallbacks, plus two same-branch bug fixes caught by a new 6-piece
+corpus regression test (Bach Prelude, Bach 114, Mozart 545, Clementi 36, Field 1, Field 5, all
+now reporting correct keys): chord-fallback now tries the closing chord before the opening one
+(opening chord isn't reliably tonic), and fallback-derived flat keys now get minimal-accidental
+spelling instead of always printing sharps.
+
+**Scope decisions confirmed at plan time, held to:** the scanner stays a separate module
+rather than extending the two existing decode/import functions; meta-event vs. chord-derived
+tonic conflicts (e.g. a modulating piece) resolve silently to the meta-event with no
+`AnalysisReport` conflict flag; the flat-spelling fix applies to the key label only, not to
+`chord_pipeline`'s sharp-only note/chord spelling or to Ursatz's `NoteEvent` (sharps-only by
+contract); the new path's mode/tonic string format matches the existing path's for
+`markdown_report.c`.
+
+**Confirmed still open, out of scope for this pass:** `key_identification.c`'s
+`matches_collection` one-directional pitch-class containment bug (lets a chromatic/foreign
+tone pass as if it fit a candidate tonic) is unfixed on `main` in both repos. It's the logic
+behind the final brute-force fallback, now rarely reached since the key-signature scanner and
+chord fallback resolve almost all real files first, but it is still reachable and still wrong
+when it is. Recorded in `Ursatz-Library/Known_Gaps.md`; a dedicated branch is recommended if it
+needs closing.
+
+**What changed in docs:** `Ursatz-Library/Status.md` (L7 section) and `Known_Gaps.md` updated
+for the new scanner and the `matches_collection` cross-reference; `Ursatz-Analyzer/Status.md`
+(pipeline section) and `Known_Gaps.md` (modulating-key entry) updated for the three-source key
+resolution order and the two mid-branch fixes. Exact merge commit hashes for both repos are
+not yet known to this docs repo (recorded as `<pending>` in the affected `Status.md`/
+`Known_Gaps.md` headers) — fill in on the next reconciliation pass once available.

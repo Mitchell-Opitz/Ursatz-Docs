@@ -59,6 +59,15 @@ docs repo can do directly).
   among phrase-boundary occurrences. Fixed in PR #37: a minimum-window-length floor is now
   required for a thematic-return match. Not yet re-verified against the reference corpus.
 
+**`key_identification.c`'s `matches_collection` does one-directional pitch-class containment,
+not set equality.** A chromatic/foreign tone doesn't disqualify a candidate tonic, which lets
+wrong tonics pass. This is the final brute-force fallback used when no MIDI key-signature
+meta-event is present and the calling analyzer's own chord-based fallback (see
+`Ursatz-Analyzer/Status.md`) doesn't resolve it either; as of PR #47 (key-signature scanner)
+and Ursatz-Analyzer PR #5 (chord-fallback tonic priority + flat spelling), it is rarely reached
+for real files, but the bug itself is untouched, confirmed present, unfixed, on `main`. Flagged
+as out of scope for both of those changes; recommend a dedicated branch if it needs closing.
+
 ## Analyzer-specific limitations (by design, not bugs)
 
 - **Chord-region matching exact-match rigidity.** This extends to seventh-chord matching too

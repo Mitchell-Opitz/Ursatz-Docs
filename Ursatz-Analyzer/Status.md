@@ -1,7 +1,7 @@
 # Ursatz-Analyzer — Status
 
-**Last verified against repo state:** 2026-09-14 (self-audit pass, no repo changes since 2026-09-13), commit `38b72a9` (PR #4). See
-`Reconciliation_Log.md` for how this was checked.
+**Last verified against repo state:** 2026-09-14, commit `<pending>` (PR #5, key-detection
+fixes). See `Reconciliation_Log.md` for how this was checked.
 
 ## Purpose
 
@@ -15,9 +15,22 @@ search candidate tonics, how to map scale degrees) and the Markdown rendering.
 ## Current implementation
 
 **End-to-end pipeline, working.** File read, then import, then onset-based sonority grouping,
-then global key search (all 12 candidate tonics, major/natural-minor only), then per-group chord
-identification (scale-degree-based, non-diatonic notes dropped rather than failing the whole
-group), then Markdown rendering, then file write.
+then global key resolution, then per-group chord identification (scale-degree-based,
+non-diatonic notes dropped rather than failing the whole group), then Markdown rendering, then
+file write.
+
+**Key resolution, as of PR #5, tries three sources in order:** (1) Ursatz's MIDI key-signature
+meta-event scanner (PR #47), taken as authoritative with silent precedence over the other two
+when present (no surfaced conflict warning, even for a modulating piece where the meta-event
+and the chord-derived tonic disagree); (2) a chord-based fallback that tries the **closing**
+chord's root before the opening chord's (opening isn't reliably tonic — can be an anacrusis or
+dominant harmony; fixed mid-branch after the regression corpus caught the old opening-first
+order); (3) the brute-force 12-candidate-tonic search (`key_identification.c`), unchanged and
+still carrying the known one-directional `matches_collection` containment bug (see
+`Ursatz-Library/Known_Gaps.md`), now rarely reached. Flat-spelling (e.g. "Eb major" instead of
+"D# major") is applied via minimal-accidental spelling (circle-of-fifths sharp/flat-count
+comparison per tonic) to the fallback-derived key label only; it does not touch chord/note
+spelling elsewhere in the report or in Ursatz's own `NoteEvent` (sharps-only by contract).
 
 ```
 main.c

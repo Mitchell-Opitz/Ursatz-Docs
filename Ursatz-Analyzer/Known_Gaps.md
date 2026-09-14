@@ -1,7 +1,7 @@
 # Ursatz-Analyzer — Known Gaps
 
-**Last verified against repo state:** 2026-09-14 (self-audit pass, no repo changes since 2026-09-13), commit `38b72a9` (PR #4). All items below
-confirmed still present at this commit; none have changed since the prior pass.
+**Last verified against repo state:** 2026-09-14, commit `<pending>` (PR #5, key-detection
+fixes). Items below re-checked against this commit; changes from PR #5 noted inline.
 
 - **README.md contains only the title** (`# Ursatz-Analyzer`), with no build/usage/dependency
   docs in-repo. Everything about usage is inferred from `main.c` and CI.
@@ -19,7 +19,11 @@ confirmed still present at this commit; none have changed since the prior pass.
   treats the entire file as one region, and `is_major` is a binary major/not-major
   classification via `strstr(claim, "major")`. This is a deliberate judgment call
   (documented as such in the code), not an oversight, but it is a real functional
-  limitation for any piece that modulates.
+  limitation for any piece that modulates. As of PR #5, this also means that on a
+  modulating piece where the MIDI key-signature meta-event and the chord-derived tonic
+  disagree, the meta-event silently wins with no conflict flag surfaced anywhere in
+  `AnalysisReport` — a deliberate scope decision for this pass, not a bug, but worth knowing
+  if a report's key label looks wrong against the audible key at the end of the piece.
 - **`segment_by_onset` requires exact onset-time equality** (`onset_equals` in
   `segmentation.c`), with no tolerance/overlap window, so overlapping-but-not-identical onsets
   (e.g. a tied suspension across a chord change) land in separate groups rather than being
