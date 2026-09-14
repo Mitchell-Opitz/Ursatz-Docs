@@ -1,7 +1,7 @@
 # Canonical IR Specification (Deliverable N)
 
 **Last verified against repo state:** 2026-09-14 (self-audit pass, no repo changes since 2026-09-13). This is a Phase-1 kernel spec; Phase-1
-objects are complete and unchanged since — nothing in the 2026-09-09 Framework Stage session
+objects are complete and unchanged since; nothing in the 2026-09-09 Framework Stage session
 or since (through Ursatz PR #46) touched this layer. Content below is otherwise unchanged
 from the prior version (previously "v3").
 
@@ -24,9 +24,9 @@ The Canonical IR is the theory-neutral, serialization-independent, storage-indep
 object graph representing musical material (Laws 14/15). It is:
 - **not** a wire format (Deliverable O);
 - **not** a database schema (Deliverable P);
-- **not** a notation document, performance recording, or audio signal (Laws 3/4/5) — those
+- **not** a notation document, performance recording, or audio signal (Laws 3/4/5); those
   reference canonical objects but aren't canonical themselves;
-- **not** owned by any theory framework (Laws 1/11) — frameworks consume it.
+- **not** owned by any theory framework (Laws 1/11); frameworks consume it.
 
 Every layer above (analysis, generation, transformation, I/O, applications) reads from and
 writes to the Canonical IR. No other representation is authoritative.
@@ -44,7 +44,7 @@ would mean L1 depends on L3/L5/L6, violating the Dependency Spec outright.
 combine, at consumption time, with higher-layer objects that reference them. No single
 module imports all of it; applications and query code assemble the graph by resolving
 references across layers. Under this reading, the Registry's "Depends On" column describes
-conceptual composition, not an import edge — but the Registry row itself remains unamended,
+conceptual composition, not an import edge, but the Registry row itself remains unamended,
 and the literal contradiction is a real open item until it's annotated as such. Every graph
 diagram below should be read as describing composition, not a module's import list.
 
@@ -67,7 +67,7 @@ Context, Interpretation, Evidence, Uncertainty, and Provenance.
 | Context | Conditions under which a claim is evaluated | L6 |
 | Provenance | Lineage of derived nodes (Activity/Agent/Derivation) | Cross-cutting, L0–L1 ceiling |
 
-No category is collapsed into another (Laws 3–5): a NoteEvent is never treated as a notation
+No category is collapsed into another (Laws 3–5); a NoteEvent is never treated as a notation
 symbol, performed sound, or chord member for convenience.
 
 ## Identity and reference model
@@ -76,8 +76,8 @@ Every persistent node is addressed by `EntityID` (L0), stable across revisions, 
 positional meaning (Law 16). Two connection mechanisms:
 
 - **Relationships (L6):** full first-class edges with predicate, scope, context, evidence,
-  provenance — used where the connection itself carries semantic weight (`derived_from`,
-  `resembles`, `contrasts_with`). **In real use since 2026-09-09** — see
+  and provenance, used where the connection itself carries semantic weight (`derived_from`,
+  `resembles`, `contrasts_with`). **In real use since 2026-09-09**; see
   `Ursatz-Library/Status.md`.
 - **Opaque references** (`VoiceReference`/`RelationshipReference` at L1, `ProvenanceReference`
   cross-cutting L0–L1): lightweight EntityID-shaped pointers used where a lower-layer node
@@ -85,7 +85,7 @@ positional meaning (Law 16). Two connection mechanisms:
   embedded semantics of their target; resolution happens only at or above the target's own
   layer.
 
-This is what makes the IR a **graph** rather than a tree of embedded objects — nodes point at
+This is what makes the IR a **graph** rather than a tree of embedded objects. Nodes point at
 each other by identity, never by embedding.
 
 ## Phase-1 canonical graph
@@ -115,15 +115,15 @@ NoteEvent
   └─ provenance             : ProvenanceReference ──resolves-at-cross-cutting──▶ Provenance record
 ```
 
-`Voice` holds NoteEvent membership via references, not by embedding NoteEvent objects — the
+`Voice` holds NoteEvent membership via references, not by embedding NoteEvent objects. The
 edge is bidirectional in meaning (Voice groups notes; a note optionally names its voice) but
 implemented as two independently-resolvable pointers, not shared mutable structure.
 
-Later phases extend the same graph with Structure/Occurrence nodes (Motif, Phrase, Theme —
-reference events without duplicating), Relationship edges (now real — Period/Sentence/Form/
+Later phases extend the same graph with Structure/Occurrence nodes (Motif, Phrase, Theme,
+which reference events without duplicating), Relationship edges (now real; Period/Sentence/Form/
 Thematic Return Detection all produce them), Context/Interpretation nodes (Chord, Key,
-ScaleDegree — attach to Sonority/Context, never mutate the underlying NoteEvents), and
-Provenance chains — all following this same identity-and-reference pattern.
+ScaleDegree, which attach to Sonority/Context and never mutate the underlying NoteEvents), and
+Provenance chains, all following this same identity-and-reference pattern.
 
 ## Requirement compliance
 
@@ -144,7 +144,7 @@ Provenance chains — all following this same identity-and-reference pattern.
 ## Uncertainty and non-authoritative claims
 
 The canonical graph (NoteEvent, Voice, etc.) holds only what is asserted as musical material.
-Claims *about* that material — key, chord, scale degree, motif membership — are separate
+Claims *about* that material (key, chord, scale degree, motif membership) are separate
 node types (`Observation`, `Hypothesis`, `Interpretation`) referencing canonical nodes
 without altering them (Law 8). Multiple competing Interpretations may coexist pointing at the
 same Sonority; no promotion to canonical fact happens except through an explicit, tracked
@@ -161,7 +161,7 @@ of producing a claim about them.
 ## Versioning
 
 Identity (`EntityID`) and revision (`Version`) are distinct; the canonical IR has no single
-global version/snapshot number — each Entity-category node is independently versioned. A
+global version/snapshot number, since each Entity-category node is independently versioned. A
 coherent multi-node snapshot ("state of this Work as of commit X") is a Corpus/Work-level
 concern, out of scope here.
 
@@ -172,13 +172,13 @@ revisions of their input nodes.
 ## Explicitly excluded from the Canonical IR
 
 Not canonical IR nodes, even though they reference canonical IR nodes (Laws 3/4/5):
-- Notation documents (engraving, layout, graphic coordinates, editorial markings) — L9.
-- Performance realizations (onset/release/velocity/timing deviation) — `PerformanceEvent`,
+- Notation documents (engraving, layout, graphic coordinates, editorial markings), at L9.
+- Performance realizations (onset/release/velocity/timing deviation): `PerformanceEvent`,
   L9, references NoteEvent via a 0..n `realizes` relationship, never redefines it.
-- Recordings/audio signal data — `Recording`/`AudioTime`, L9.
-- Any serialized byte stream — Deliverable O.
-- Any storage row/document — Deliverable P.
-- MusicXML export output (`src/export/musicxml_export.*`) — a rendering, not a canonical node.
+- Recordings/audio signal data: `Recording`/`AudioTime`, L9.
+- Any serialized byte stream, which is Deliverable O.
+- Any storage row/document, which is Deliverable P.
+- MusicXML export output (`src/export/musicxml_export.*`), a rendering, not a canonical node.
 
 A conversion or query treating any of the above as canonical fact is a Dependency Spec
 violation ("MUST NOT redefine Canonical Events").
@@ -226,7 +226,7 @@ NoteEvent N6: { id: "note-6", pitch: PitchIdentity(D5),
 ```
 
 (`prov-transpose-1` resolves, at the cross-cutting Provenance layer, to a Derivation record
-naming the `Transposition(+P5)` activity — the record itself is Deliverable K's scope, still
+naming the `Transposition(+P5)` activity; the record itself is Deliverable K's scope, still
 not written.)
 
 ## Extension mechanism
@@ -234,7 +234,7 @@ not written.)
 New musical concepts enter the canonical graph only under the Core Extension Rule
 (framework-neutral, required by multiple subsystems, not representable as an extension,
 stable semantics, no theory leakage). The default path for a new concept is **not** a new
-canonical node type — it's one of:
+canonical node type. Instead, it's one of:
 - a new `Relationship` predicate;
 - a new `Interpretation`/`Annotation` type referencing existing canonical nodes;
 - a new `Structure`/`Occurrence` pair referencing existing events without duplicating them.
@@ -248,13 +248,13 @@ node enter L1–L4.
    `Canonical Musical Model / IR` conflicts with strict layer ordering. Working interpretation
    (composition, not import) used in this document; Registry annotation to reflect that still
    needed.
-2. **NoteEvent category boundary unresolved** — affects whether "Event" is the correct
+2. **NoteEvent category boundary unresolved.** This affects whether "Event" is the correct
    permanent category for the canonical graph's core node, or whether Entity/Occurrence
    absorbs it.
-3. **TimeSpan boundary vocabulary provisional** — affects how Occurrence/Structure regions
+3. **TimeSpan boundary vocabulary provisional.** This affects how Occurrence/Structure regions
    are represented.
-4. **General partial-information model beyond ProvenanceReference is unscoped** —
-   pitch/other-field partial knowledge (e.g. "pitch = unknown / pitch_candidates = [...]")
+4. **General partial-information model beyond ProvenanceReference is unscoped.**
+   Pitch/other-field partial knowledge (e.g. "pitch = unknown / pitch_candidates = [...]")
    has no worked node model yet; needed before Phase 4 (Observation/Hypothesis) can be
    specified against this IR.
 

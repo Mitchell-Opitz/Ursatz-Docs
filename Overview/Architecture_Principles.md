@@ -1,6 +1,6 @@
 # Architecture Principles
 
-**Last verified against repo state:** 2026-09-13. This document is conceptually stable —
+**Last verified against repo state:** 2026-09-13. This document is conceptually stable;
 it describes design law and layer shape, not current build status. Status lives in each
 repo's `Status.md`.
 
@@ -10,7 +10,7 @@ This is the condensed, at-a-glance version. Full derivation and reasoning:
 ## Central principle
 
 Distinguish what musical material *is* from what is *observed* about it, what is *inferred*,
-how it's *interpreted*, under which *framework*, how it's *transformed*, how it's
+how it's *interpreted*, under which *framework*, how it's *transformed*, and how it's
 *rendered/performed*. No layer above the canonical model may silently redefine it. No
 interpretation may silently become fact. No uncertainty may be discarded for downstream
 convenience. No generated object may lose lineage. No external format may become the domain
@@ -59,19 +59,20 @@ L8  Analysis / Generation / Transformation
 L9  I/O / Applications
 ```
 
-Cross-cutting (attach to any layer; dependency direction governed by their own ceiling, not
-layer order): **Provenance** (L0–L1 ceiling), **Observability** (L0 ceiling), **Security**
-(L0–L1 ceiling), **Validation** (own layer + all lower), **Persistence** (Canonical IR/L1
-only — outside the numbered stack entirely, never imported by L0–L8).
+Cross-cutting modules attach to any layer; their dependency direction is governed by their
+own ceiling, not layer order: **Provenance** (L0–L1 ceiling), **Observability** (L0
+ceiling), **Security** (L0–L1 ceiling), **Validation** (own layer + all lower), and
+**Persistence** (Canonical IR/L1 only, outside the numbered stack entirely, never imported
+by L0–L8).
 
 **Dependency rule:** a module in layer N may depend only on modules in layers 0..N, plus any
-cross-cutting module it's permitted to use. Never upward. Full prohibitions list and the
+cross-cutting module it's permitted to use, never upward. Full prohibitions list and the
 Registry-first enforcement rule: `Ursatz-Library/Dependency_Layer_Specification.md`.
 
 ## The durable claim pattern (established 2026-09-09, do not re-litigate per branch)
 
 A framework-relative claim about an L5 shell (Motif, Cadence, Theme, etc.) is a generic
-`Interpretation` (L6) targeting the shell's EntityID — never a new named claim-type. Where a
+`Interpretation` (L6) targeting the shell's EntityID, never a new named claim-type. Where a
 claim links two or more elements (antecedent+consequent, a section boundary, a thematic
 return), the mechanism is a `Relationship` (L6) linking them, with the `Interpretation`
 targeting the Relationship's id instead. This is proven across Period, Sentence, Form, and
@@ -82,5 +83,5 @@ Thematic Return Detection and is the default assumption for any future analyzer 
 A mid-session architecture decision relocated four L5 types to L6, reasoning from what their
 fields *should* be rather than checking what was actually committed. It was wrong, and cost a
 revert. **Verify actual repo state before making an architecture decision, not only before
-implementing one.** This same discipline now also applies to documentation claims generally —
+implementing one.** This same discipline now also applies to documentation claims generally;
 see `Reconciliation_Log.md`.

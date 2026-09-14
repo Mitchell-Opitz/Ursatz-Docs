@@ -10,7 +10,7 @@ Scope: Phase-1 ontology objects only.
 ## Purpose
 
 The Domain Spec defines what the domain objects *are*. This document defines how code is
-permitted to construct, inspect, and serialize them — the language/framework-independent
+permitted to construct, inspect, and serialize them, forming the language/framework-independent
 contract surface. It does not define storage (Deliverable P), wire formats (Deliverable O),
 or collection-level query semantics (Deliverable Q); those build on this.
 
@@ -88,7 +88,7 @@ MusicalTime.of(numerator, denominator: PositiveInteger) -> MusicalTime
 ```
 
 ### TimeSpan
-Boundary vocabulary provisional (Domain Spec) — this contract uses the working four-value
+Boundary vocabulary provisional (Domain Spec); this contract uses the working four-value
 enum and will be revised without notice-of-breaking-change when a Temporal Semantics spec
 lands.
 ```
@@ -168,8 +168,8 @@ Voice.create(id: EntityID) -> Voice
 ### Primitive value arithmetic (note)
 `.add()`/`.subtract()` on Duration and MusicalTime are the *only* Phase-1 "transformation"
 contracts in this document's scope. They are not instances of the full Transformation
-Architecture (Transposition, Inversion, Retrograde, etc. — see `Status.md` for that, now
-implemented) — those operate on NoteEvent-and-above, require provenance linkage (Law 20).
+Architecture (Transposition, Inversion, Retrograde, etc.; see `Status.md` for that, now
+implemented), since those operate on NoteEvent-and-above and require provenance linkage (Law 20).
 Primitive rational arithmetic produces a new Value, not a derived Entity, so it needs no
 provenance.
 
@@ -219,7 +219,7 @@ VoiceResolver.resolve(ref: VoiceReference) -> Voice | DanglingReference         
 RelationshipResolver.resolve(ref: RelationshipReference) -> Relationship | DanglingReference  -- L6+
 ProvenanceResolver.resolve(ref: ProvenanceReference) -> ProvenanceRecord | DanglingReference   -- L1+
 ```
-A dangling reference on resolution is an invariant violation, not merely a null result —
+A dangling reference on resolution is an invariant violation, not merely a null result;
 callers must be able to distinguish "absent" from "dangling." Whether a reference to a
 tombstoned target counts as dangling is left to future lifecycle/resolution specs.
 

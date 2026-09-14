@@ -1,11 +1,11 @@
 # Ursatz Project Documentation — Index
 
 This repo is the single source of truth for the Ursatz ecosystem's design, status, and
-history. It is maintained separately from the code repos — nothing here is generated from
+history. It is maintained separately from the code repos; nothing here is generated from
 CLAUDE.md files, and none of the code repos reference this repo back.
 
-**Ecosystem:** `Ursatz` (theory-neutral C library / kernel) → consumed by `Ursatz-Analyzer`
-(CLI) and `Ursatz-GUI` (web app) today, and a planned `Ursatz-Composer` (generation engine)
+**Ecosystem:** `Ursatz` (theory-neutral C library / kernel), consumed by `Ursatz-Analyzer`
+(CLI) and `Ursatz-GUI` (web app) today, with a planned `Ursatz-Composer` (generation engine)
 later.
 
 ## Where to look
@@ -40,14 +40,14 @@ Archive/                superseded doc versions, kept for history. Never edited.
 
 ## Working principles for this repo
 
-1. **Every `Status.md` is a living document** — it describes current, verified-against-code
+1. **Every `Status.md` is a living document.** It describes current, verified-against-code
    state, not a point-in-time snapshot. It gets edited in place; history lives in git and in
    `Reconciliation_Log.md`, not in the filename.
 2. **Purpose vs. implementation are separate sections** in each repo's `Status.md`. If a
-   repo's goal changes, only the Purpose paragraph changes — implementation history isn't
+   repo's goal changes, only the Purpose paragraph changes; implementation history isn't
    rewritten, and the change gets a dated entry in `Reconciliation_Log.md`.
-3. **Adding a new repo to the ecosystem** (e.g. Ursatz-Composer) means: fill in its folder
-   using the same two-file template (`Status.md`, `Known_Gaps.md`), add one row to
+3. **Adding a new repo to the ecosystem** (e.g. Ursatz-Composer) means filling in its folder
+   using the same two-file template (`Status.md`, `Known_Gaps.md`), then adding one row to
    `Overview/Master_Roadmap.md`'s summary table. Nothing else needs to move.
 4. **Don't trust a "Not Started"/"done" claim without a repo check.** This project's own
    history (see `Reconciliation_Log.md`) shows status claims lag real repo state often enough

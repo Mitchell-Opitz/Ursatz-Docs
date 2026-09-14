@@ -4,7 +4,7 @@
 
 ## Purpose (planned)
 
-The generative composition engine — Phase 3 of `Overview/Apps_Roadmap.md`. "Blend the
+The generative composition engine, Phase 3 of `Overview/Apps_Roadmap.md`. "Blend the
 whimsical aspect of this with the darkness of that, match project requirements, apply my
 style, generate the piece." Motif-up or form-down, either direction. Will consume the
 `Ursatz` library the same way `Ursatz-Analyzer` and `Ursatz-GUI` do.
@@ -16,11 +16,11 @@ None. No repository exists.
 ## Gating dependencies (must be true before this repo starts)
 
 1. Framework v1 verification actually completes (see `Ursatz-Library/Known_Gaps.md` and
-   `Overview/Master_Roadmap.md`'s Phase 2.5 section) — not yet done.
-2. A real ranking/preference layer exists — `Constraint`/`Preference` are currently
+   `Overview/Master_Roadmap.md`'s Phase 2.5 section). This is not yet done.
+2. A real ranking/preference layer exists. `Constraint`/`Preference` are currently
    deliberate kernel stubs (see `Ursatz-Library/Registry/Registry_Theory_Analysis.md`).
 3. `StatisticalModel`/`StyleModel` become real, not stubbed.
-4. A Generator-facing query layer (PatternMatching/SimilarityModel/SearchResult) — analysis
+4. A Generator-facing query layer (PatternMatching/SimilarityModel/SearchResult). Analysis
    output is queryable-by-construction already, but nothing queries it yet.
 
 ## When this repo is created

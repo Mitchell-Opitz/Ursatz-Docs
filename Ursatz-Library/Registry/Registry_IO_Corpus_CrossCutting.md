@@ -8,8 +8,8 @@ verification warning.
 ## Query
 
 Query Interface (find_notes, find_intervals, find_occurrences, find_interpretations, find_relationships) | Interface | Domain queries replacing raw SQL | music-query | Repositories | Applications | Post kernel | Not Started | Q | Yes | Interface Contract | Unit
-PatternMatching | Concept | Match over declared dimensions (interval, rhythm) | music-query | Interval/RhythmicPattern | Motif Detection, Search | 8 | Not Started — Motif Detection (implemented) deliberately does NOT depend on this; it does direct Contour/RhythmicPattern sequence comparison instead, to avoid standing up unbuilt L9 query infrastructure | Q | Yes | Behavioral Contract | Unit
-SimilarityModel | Concept | Explicit-dimension similarity (pitch, contour, rhythm, transposition, etc.) | music-query | Interval, Contour, RhythmicPattern | SearchResult | 8 | Not Started — same scope-avoidance note as PatternMatching above | Q | Yes (no undeclared-similarity prohibition is explicit) | Behavioral Contract | Unit
+PatternMatching | Concept | Match over declared dimensions (interval, rhythm) | music-query | Interval/RhythmicPattern | Motif Detection, Search | 8 | Not Started. Motif Detection (implemented) deliberately does NOT depend on this; it does direct Contour/RhythmicPattern sequence comparison instead, to avoid standing up unbuilt L9 query infrastructure | Q | Yes | Behavioral Contract | Unit
+SimilarityModel | Concept | Explicit-dimension similarity (pitch, contour, rhythm, transposition, etc.) | music-query | Interval, Contour, RhythmicPattern | SearchResult | 8 | Not Started (same scope-avoidance note as PatternMatching above) | Q | Yes (no undeclared-similarity prohibition is explicit) | Behavioral Contract | Unit
 SearchResult | Value | Target, match region, similarity, criteria, evidence, provenance | music-query | PatternMatching/SimilarityModel | Application UI | 8 | Not Started | Q | Yes | Structural | Unit
 Views (Temporal, Pitch, Rhythmic, Voice, Harmonic, Motivic, Formal, Performance, Notation) | Concept | Derived, non-duplicating projections of canonical data | music-query | Canonical IR | Applications | Post kernel | Not Started | Q | Yes | Structural | Invariant
 
@@ -19,7 +19,7 @@ Score Model (Staff, Clef, KeySignature, TimeSignature, Measure, Beam, Stem, Barl
 Notation Document Model | Concept | Preserves engraving/layout/editorial info without canonical-event equivalent | music-notation | DigitalArtifact | MusicXML/MEI adapters | 2/14 | Not Started | N | Yes | Structural | RoundTrip
 
 **Note:** Ursatz-GUI renders notation via a real MusicXML export (see I/O Adapters below)
-consumed by a vendored OpenSheetMusicDisplay frontend — an application-level rendering
+consumed by a vendored OpenSheetMusicDisplay frontend, an application-level rendering
 solution, not an implementation of this kernel module. The kernel-level Score Model/Notation
 Document Model remain entirely unbuilt.
 
@@ -30,14 +30,14 @@ DigitalArtifact | Entity | External digital object (PDF, MusicXML, MIDI, MEI, WA
 
 ## I/O Adapters
 
-MIDIImporter | Adapter | MIDI → Observations/Candidates → Canonical | music-io | MIDI transport concepts | Canonical IR | 14 | Implemented (minimal) — SMF type 0/1, note-on/off only, tempo-independent whole-note-fraction Duration units (PR #39), real per-track Voice assignment via interval-graph coloring (PRs #43/#46), flattens multi-track files, fails cleanly on malformed input | T | Yes | Behavioral Contract | RoundTrip
+MIDIImporter | Adapter | MIDI → Observations/Candidates → Canonical | music-io | MIDI transport concepts | Canonical IR | 14 | Implemented (minimal); SMF type 0/1, note-on/off only, tempo-independent whole-note-fraction Duration units (PR #39), real per-track Voice assignment via interval-graph coloring (PRs #43/#46), flattens multi-track files, fails cleanly on malformed input | T | Yes | Behavioral Contract | RoundTrip
 MusicXMLImporter | Adapter | MusicXML → Canonical | music-io | Notation Document Model | Canonical IR | 14 | Not Started | T | Yes | Behavioral Contract | RoundTrip
 MEIImporter | Adapter | MEI → Canonical | music-io | Notation Document Model | Canonical IR | 14 | Not Started | T | Yes | Behavioral Contract | RoundTrip
 ABCImporter | Adapter | ABC → Canonical | music-io | — | Canonical IR | 14 | Not Started | T | Yes | Behavioral Contract | RoundTrip
 AudioAnalyzer (importer) | Adapter | Recording → Observations → Canonical | music-io | Recording, Signal Processing | Canonical IR | 17 | Not Started | T | Yes | Behavioral Contract | RoundTrip
 OCRImporter | Adapter | Image → Observations → Canonical | music-io | Visual Recognition | Canonical IR | 16 | Not Started | T | Yes | Behavioral Contract | RoundTrip
 MIDIRenderer | Adapter | Canonical → MIDI | music-io | Canonical IR | Playback | 14 | Not Started | T | Yes | Behavioral Contract | RoundTrip
-MusicXMLRenderer / MusicXmlExport | Adapter | Canonical → MusicXML | music-io | Canonical IR, Notation Doc Model | Export | 14 | **Implemented** (PRs #40–41, `src/export/musicxml_export.*`) — single-part note/measure serialization, `xml:id` on exported notes (for downstream note-highlighting use by Ursatz-GUI); overlap-detection and error-code propagation fixes since applied (PRs #22–25). Row status was "Not Started" as of the 2026-09-09 session — corrected 2026-09-13 | T | Yes | Behavioral Contract | RoundTrip
+MusicXMLRenderer / MusicXmlExport | Adapter | Canonical → MusicXML | music-io | Canonical IR, Notation Doc Model | Export | 14 | **Implemented** (PRs #40–41, `src/export/musicxml_export.*`); single-part note/measure serialization, `xml:id` on exported notes (for downstream note-highlighting use by Ursatz-GUI); overlap-detection and error-code propagation fixes since applied (PRs #22–25). Row status was "Not Started" as of the 2026-09-09 session, corrected 2026-09-13 | T | Yes | Behavioral Contract | RoundTrip
 MEIRenderer | Adapter | Canonical → MEI | music-io | Canonical IR, Notation Doc Model | Export | 14 | Not Started | T | Yes | Behavioral Contract | RoundTrip
 NotationRenderer | Adapter | Canonical → visual notation | music-notation | Score Model | Display/print | 14 | Not Started at kernel level (Ursatz-GUI does this at the application level via OSMD, consuming MusicXmlExport output) | N | Yes | Behavioral Contract | RoundTrip
 AudioRenderer | Adapter | Canonical/Performance → Audio | music-performance / music-io | PerformanceEvent | Playback | 14 | Not Started | T | Yes | Behavioral Contract | RoundTrip
@@ -45,12 +45,12 @@ LossModel | Concept | Reports preserved/converted/approximated/discarded/unknown
 
 ## Corpus
 
-Corpus | Entity | Collection of sources/documents for statistical study | music-corpus | Persistence (EventRepository, InterpretationRepository) | Analyzer, Generator, corpus_stats | 15 | Implemented (minimal — create/list Corpora, add/remove/list piece refs) | B, Q | Yes | Structural | CorpusRegression
+Corpus | Entity | Collection of sources/documents for statistical study | music-corpus | Persistence (EventRepository, InterpretationRepository) | Analyzer, Generator, corpus_stats | 15 | Implemented (minimal, create/list Corpora, add/remove/list piece refs) | B, Q | Yes | Structural | CorpusRegression
 Corpus Ingestion / Normalization | Pipeline | Corpus source → Canonical Representation | music-corpus | Importers | Feature Extraction | 15 | Not Started | Q | Yes | Behavioral Contract | CorpusRegression
 Corpus Feature Extraction / Indexing | Pipeline | Canonical → features → index | music-corpus | Canonical IR | Statistics | 15 | Not Started | Q | Yes | Behavioral Contract | CorpusRegression
-Corpus Statistics / Style Models | Concept | Derived, non-authoritative statistical knowledge | corpus_stats | corpus, persistence, interpretation, identity | Tendency, StatisticalModel | 15 | Implemented (minimal — most-common-chord only) | L, Q | Yes (non-authority rule explicit) | Structural | CorpusRegression
+Corpus Statistics / Style Models | Concept | Derived, non-authoritative statistical knowledge | corpus_stats | corpus, persistence, interpretation, identity | Tendency, StatisticalModel | 15 | Implemented (minimal, most-common-chord only) | L, Q | Yes (non-authority rule explicit) | Structural | CorpusRegression
 StyleModel | Entity | Frameworks + constraints + preferences + tendencies + prob. models (versioned) | music-theory | Corpus Statistics | Generation | 15 | Not Started | L | Yes | Structural | CorpusRegression
-framework-v1-reference-set | Corpus instance | Fixed test corpus defining Framework v1's finite-endpoint criterion | music-corpus | Corpus API | Framework-stage AnalysisRegression (intended, not yet built) | 15 | Registered — 5 pieces: Bach (BWV Anh. 114), Clementi (Op. 36), Field (Nocturne No. 1), Field (Nocturne No. 5), Mozart (K.545). Fixture files in `tests/fixtures/framework-v1-corpus/`. `CorpusRegression` verifies registration ONLY. Manual GUI verification: Bach checked, surfaced two bugs, both since fixed in code (PRs #36, #37) but not re-verified against the corpus. Other 4 pieces never checked. **This remains the actual remaining gap for calling Framework v1 "done"** — see `Overview/Master_Roadmap.md` | Q | Yes | Structural | CorpusRegression
+framework-v1-reference-set | Corpus instance | Fixed test corpus defining Framework v1's finite-endpoint criterion | music-corpus | Corpus API | Framework-stage AnalysisRegression (intended, not yet built) | 15 | Registered. 5 pieces: Bach (BWV Anh. 114), Clementi (Op. 36), Field (Nocturne No. 1), Field (Nocturne No. 5), Mozart (K.545). Fixture files in `tests/fixtures/framework-v1-corpus/`. `CorpusRegression` verifies registration ONLY. Manual GUI verification: Bach checked, surfaced two bugs, both since fixed in code (PRs #36, #37) but not re-verified against the corpus. Other 4 pieces never checked. **This remains the actual remaining gap for calling Framework v1 "done"**; see `Overview/Master_Roadmap.md` | Q | Yes | Structural | CorpusRegression
 
 ## Plugin / Security
 
@@ -62,14 +62,14 @@ Query Safety Limits | Concept | Resource limits, pagination, recursion depth, ti
 ## Validation
 
 Validation Layers (schema, object, domain invariant, relationship, context, framework, constraint, serialization, rendering, security) | Concept | Multi-level validation architecture | cross-cutting | Respective object models | All pipelines | Ongoing | Not Started | R | Yes | Behavioral Contract | Invariant (per-layer)
-Domain Invariants (Duration>=0, valid time, valid pitch, unique EntityIDs, required provenance, etc.) | Concept | Enforced object-level rules | music-core | Value/Entity definitions | Validation layer | 1+ | Not Started (as a formal cross-cutting layer — individual invariants are enforced per-object at construction, see `Test_Specification.md`) | R | Yes | Invariant | Invariant
-Relationship Invariants | Concept | Endpoint/predicate/context/provenance existence rules | music-relationship | Relationship, PredicateDefinition | Validation layer | 6 | Not Started as a formal layer — Relationship itself is implemented and in real use; these invariants have not been confirmed enforced as a distinct validation pass | R, G | Yes | Invariant | Relationship
+Domain Invariants (Duration>=0, valid time, valid pitch, unique EntityIDs, required provenance, etc.) | Concept | Enforced object-level rules | music-core | Value/Entity definitions | Validation layer | 1+ | Not Started (as a formal cross-cutting layer; individual invariants are enforced per-object at construction, see `Test_Specification.md`) | R | Yes | Invariant | Invariant
+Relationship Invariants | Concept | Endpoint/predicate/context/provenance existence rules | music-relationship | Relationship, PredicateDefinition | Validation layer | 6 | Not Started as a formal layer. Relationship itself is implemented and in real use; these invariants have not been confirmed enforced as a distinct validation pass | R, G | Yes | Invariant | Relationship
 Provenance Invariants | Concept | Ancestor/activity/agent existence, DAG acyclicity | music-provenance | Provenance objects | Validation layer | 6 | Not Started | R, K | Yes | Invariant | Provenance
 
 ## Testing
 
 Testing Categories (Unit, Property-Based, Invariant, Golden, Serialization, Migration, Round-Trip, Relationship, Provenance, Context, Theory, Transformation, Analysis Regression, Generation Validation, Corpus Regression, Performance, Security, Fuzz) | Concept | Required test strategy coverage | cross-cutting (test infra) | Respective modules under test | All modules | Ongoing | See `Test_Specification.md` for per-category status | U | Yes | Process Contract | N/A (self-defining)
-Architecture Tests | Concept | Enforce dependency direction / no theory leakage | cross-cutting (test infra) | Module Architecture | CI gating | Ongoing | Implemented — every analyzer added since 2026-09-09 shipped with its own architecture guard test confirming no upward/sideways layer leakage; full suite 150+ tests as of PR #46 | U | Yes | Process Contract | N/A (self-defining)
+Architecture Tests | Concept | Enforce dependency direction / no theory leakage | cross-cutting (test infra) | Module Architecture | CI gating | Ongoing | Implemented; every analyzer added since 2026-09-09 shipped with its own architecture guard test confirming no upward/sideways layer leakage. Full suite 150+ tests as of PR #46 | U | Yes | Process Contract | N/A (self-defining)
 
 ## Work / Edition Model
 

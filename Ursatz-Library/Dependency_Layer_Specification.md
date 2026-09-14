@@ -8,9 +8,9 @@ Source: Technical Design Document, System Registry.
 ## Status
 
 Both long-standing open issues remain resolved:
-- **Interpretation-family → Framework ordering** — resolved via `FrameworkReference` (L6
+- **Interpretation-family → Framework ordering**, resolved via `FrameworkReference` (L6
   holds a reference, resolution happens at L7+).
-- **Theory → Corpus ordering** — confirmed already correctly handled: Theory-layer
+- **Theory → Corpus ordering**, confirmed already correctly handled. Theory-layer
   statistical objects (Tendency, StatisticalModel, StyleModel) consume Corpus data only as
   opaque pre-computed values, never importing the Corpus module itself.
 
@@ -21,12 +21,12 @@ their intended fields (FrameworkReference, Context, Evidence) were L6 types. Tha
 was made without checking actual repo state first, and was **wrong**: all four types already
 existed, committed, as plain L5 shells (id + EntityID-reference-list, detection logic
 deliberately deferred to L8). There was no forward dependency to resolve. This is reverted in
-full — see Layer contents below, and `Overview/Master_Roadmap.md`'s process discipline
+full; see Layer contents below, and `Overview/Master_Roadmap.md`'s process discipline
 section for the lesson this taught.
 
 The **actual** resolution, confirmed by building against it across the full Framework-stage
 branch sequence (Cadence Detection, Motif Detection, Phrase Boundary Detection, Period
-Detection, Sentence Detection, Form Structure Detection, Thematic Return Detection — all
+Detection, Sentence Detection, Form Structure Detection, Thematic Return Detection, all
 merged and verified in code as of 2026-09-13): a framework-relative claim about an L5 shell
 is expressed as the existing generic `Interpretation` type (L6, the same type Chord/Key
 already use), with its `target` set to the L5 shell's EntityID. No new named Interpretation-
@@ -36,19 +36,19 @@ thematic return), the mechanism is a `Relationship` (L6, music-relationship) lin
 with the `Interpretation` targeting the Relationship's id instead of a single element. This
 two-tier pattern is the standing default for any future Framework-stage work.
 
-**Relationship (L6, music-relationship) — confirmed implemented and in real use, verified
-2026-09-13.** Predicates actually in use in code: `precedes` (sequential order — Period
-antecedent→consequent, Form section order), `transformed_from` (derivation — Sentence
+**Relationship (L6, music-relationship): confirmed implemented and in real use, verified
+2026-09-13.** Predicates actually in use in code: `precedes` (sequential order; Period
+antecedent→consequent, Form section order), `transformed_from` (derivation; Sentence
 statement→repetition→continuation, direction: derived-part → source), `resembles`
-(recurrence with no claimed derivation direction — Form thematic return, Theme-to-Theme).
+(recurrence with no claimed derivation direction; Form thematic return, Theme-to-Theme).
 
-**Relationship persistence — no repository home yet, stopgap confirmed still in use
-(2026-09-13):** `RelationshipRepository` does not exist in Ursatz's persistence layer.
+**Relationship persistence: no repository home yet, stopgap confirmed still in use
+(2026-09-13).** `RelationshipRepository` does not exist in Ursatz's persistence layer.
 Ursatz-GUI's Framework-analyzer wiring needed to persist real Relationship instances
 (Period/Sentence/Form/Thematic Return output) and could not wait on this, so it added an
 Ursatz-GUI-owned SQLite table (`ursatz_gui_relationships`) mirroring its existing index/meta
 table pattern. This is application-layer, outside the numbered stack, same as any other
-Persistence module — not a violation of layer rules, but also not the eventual Ursatz-side
+Persistence module. It is not a violation of layer rules, but also not the eventual Ursatz-side
 `RelationshipRepository`. Retire that table in favor of it once/if it's built.
 
 This specification is the working dependency contract.
@@ -78,11 +78,11 @@ module it's permitted to depend on. A module in layer **N** shall never depend o
 in layers **N+1..9**.
 
 - A numbered layer MAY depend on a cross-cutting module, subject to that module's individual
-  ceiling (below) — the per-module ceiling governs over this general permission.
+  ceiling (below); the per-module ceiling governs over this general permission.
 - A cross-cutting module MUST obey its own stated ceiling and MUST NOT depend on any numbered
   layer above it. "Cross-cutting" describes *who may use it*, not *what it may use*.
-- Persistence is outside the numbered domain stack entirely, I/O-adjacent — not "layer 9,"
-  not exempt from restriction.
+- Persistence is outside the numbered domain stack entirely, I/O-adjacent, and it is not "layer 9,"
+  nor exempt from restriction.
 
 ## Layer contents (module → layer), current implementation status
 
@@ -111,19 +111,19 @@ in layers **N+1..9**.
 | Validation | Own layer + all lower layers | All layers | A validator for layer N depends on layer N plus everything N may depend on. MUST NOT depend upward. |
 | Persistence (repositories, Cache) | Canonical IR / L1 only | I/O and application code outside the numbered stack | Outside the numbered stack. MUST NEVER be imported by L0–L8. See Relationship-persistence stopgap note above. |
 
-No cross-cutting module may become an escape hatch around the layer architecture — routing
+No cross-cutting module may become an escape hatch around the layer architecture; routing
 through one doesn't exempt a dependency from the rules above.
 
 **Provisional layer placements** (kept as-is, flagged as dependency-magnet risk):
-- **Instrument/InstrumentCapability (L3)** — referenced by Events, Performance, Generation
-  constraints, and Notation; plausible candidate for its own boundary once those
+- **Instrument/InstrumentCapability (L3)**, referenced by Events, Performance, Generation
+  constraints, and Notation; a plausible candidate for its own boundary once those
   relationships are fully specified.
 
-**music-corpus (L9) — placement resolved, no longer provisional:** `corpus` (L9) depends
-only on `identity` (L0) and `persistence` (L9) — dependency-pure, sibling to persistence.
+**music-corpus (L9): placement resolved, no longer provisional.** `corpus` (L9) depends
+only on `identity` (L0) and `persistence` (L9), dependency-pure and sibling to persistence.
 Analyzer and Generator depend on `corpus` directly as peers; neither routes through the
 other. `corpus_stats` (L9-adjacent) is a separate module depending on `corpus`, `persistence`,
-`interpretation`, and `identity` — this split exists because chord-level statistics require
+`interpretation`, and `identity`; this split exists because chord-level statistics require
 reading `interpretation` data, which `corpus` itself must not depend on.
 
 ## Explicit prohibitions
@@ -165,7 +165,7 @@ L5-L8 analyzers MUST NOT compute real interval/tuning values (e.g. "is this a pe
 **Current real status (verified 2026-09-13):** `TuningSystem`/`PitchRealization` types now
 exist in the kernel (`src/pitch/`), but Voice Leading, Cadence Classification's PAC/IAC
 distinction, and Motif Detection still only operate on caller-supplied or
-Contour/RhythmicPattern-derived (direction/duration-only) data — nothing has wired them up to
+Contour/RhythmicPattern-derived (direction/duration-only) data; nothing has wired them up to
 consume the new types yet. See `Status.md` and `Known_Gaps.md`.
 
 ## Registry-first dependency rule
@@ -176,14 +176,14 @@ The System Registry is an architectural authority, not documentation:
 > Architecture tests SHALL reject dependencies not authorized by the Registry.
 
 Undocumented sibling coupling is prohibited at any layer, including within the same layer. A
-needed dependency not yet in the Registry must be reviewed and added there first — never
+needed dependency not yet in the Registry must be reviewed and added there first, never
 introduced informally in code and reconciled later.
 
 **Verify before deciding, not just before implementing:** an architecture-level placement
 decision is only as good as the repo-state check behind it. Confirm actual committed state
 before making an architecture decision, not only before a branch starts implementing one.
 This is the standing lesson from the 2026-09-09 L5/L6 misplacement above, and it now also
-applies to documentation claims generally — see `Reconciliation_Log.md`.
+applies to documentation claims generally; see `Reconciliation_Log.md`.
 
 ## L9 detail
 
@@ -225,14 +225,14 @@ confirming no upward/sideways leakage was introduced.
 
 ### Interpretation-family ↔ Framework ordering — RESOLVED
 Previously listed `Interpretation`/`Chord`/`Key`/`ScaleDegree` (L6) as depending directly on
-`Framework` (L7) — a forward dependency, disallowed under strict layer order. Resolved via
+`Framework` (L7), a forward dependency disallowed under strict layer order. Resolved via
 **option 1**: these types depend only on a `FrameworkReference` (ID/version) living at L6;
 resolution to the actual Framework happens at L7+.
 
 ### Theory (L7) ↔ Corpus (L9) ordering — RESOLVED
 Previously listed `Tendency`/`StatisticalModel`/`StyleModel` (L7) as depending on
-`Corpus`/`Corpus Statistics` (L9) — also a forward dependency. Confirmed resolved in
-practice: Theory-layer statistical objects consume corpus data only as opaque pre-computed
+`Corpus`/`Corpus Statistics` (L9), also a forward dependency. Confirmed resolved in
+practice, as Theory-layer statistical objects consume corpus data only as opaque pre-computed
 values, never importing the Corpus module itself.
 
 ### L5 Structure-family placement — RESOLVED (corrected 2026-09-09 error)

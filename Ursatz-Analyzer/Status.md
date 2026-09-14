@@ -6,18 +6,18 @@
 ## Purpose
 
 A small C11 command-line tool that turns a MIDI file into a human-readable Markdown analysis
-report: estimates the piece's global key and, for each group of simultaneously-onset notes,
-identifies the most likely chord. A thin consumer/demonstration app on top of the `Ursatz`
-library (`external/ursatz`, git submodule) — supplies no music-theory logic of its own, only
+report. It estimates the piece's global key, and for each group of simultaneously-onset notes,
+identifies the most likely chord. It's a thin consumer/demonstration app on top of the `Ursatz`
+library (`external/ursatz`, git submodule), supplying no music-theory logic of its own, only
 the judgment calls Ursatz itself leaves open (how to group notes into sonorities, how to
 search candidate tonics, how to map scale degrees) and the Markdown rendering.
 
 ## Current implementation
 
-**End-to-end pipeline, working:** file read → import → onset-based sonority grouping →
-global key search (all 12 candidate tonics, major/natural-minor only) → per-group chord
+**End-to-end pipeline, working.** File read, then import, then onset-based sonority grouping,
+then global key search (all 12 candidate tonics, major/natural-minor only), then per-group chord
 identification (scale-degree-based, non-diatonic notes dropped rather than failing the whole
-group) → Markdown rendering → file write.
+group), then Markdown rendering, then file write.
 
 ```
 main.c
@@ -30,26 +30,26 @@ main.c
        └─ analysis_report / markdown_report / report_writer (output only)
 ```
 
-CLI: `ursatz-analyzer <midi-file-path>` — writes `<stem>.report.md` next to the input;
-exits 1 with a usage/error message on bad input, allocation failure, or write failure.
+CLI: `ursatz-analyzer <midi-file-path>`, which writes `<stem>.report.md` next to the input,
+and exits 1 with a usage/error message on bad input, allocation failure, or write failure.
 
 ## Current state relative to the ecosystem
 
 **This repo is genuinely low-churn and does not track the Ursatz library's Framework Stage
 work.** Only 4 PRs exist total; the most recent (#4) is a narrow submodule bump for a
-key-tolerance fix, not new functionality. It still only does key + chord identification — no
-Cadence/Motif/Period/Sentence/Form-level analysis exists here (that wiring only happened in
-Ursatz-GUI). This is not staleness to fix; it reflects the repo's actual, narrower scope as a
-demonstration CLI, distinct from Ursatz-GUI's broader consumer role. If this repo's purpose
-is meant to expand (e.g. to also exercise the Framework-stage analyzers), that's a purpose
-change to record here and in `Overview/Master_Roadmap.md`, not a "catch-up" bug fix.
+key-tolerance fix, not new functionality. It still only does key + chord identification, with
+no Cadence/Motif/Period/Sentence/Form-level analysis existing here (that wiring only happened in
+Ursatz-GUI). This is not staleness to fix, but rather a reflection of the repo's actual, narrower
+scope as a demonstration CLI, distinct from Ursatz-GUI's broader consumer role. If this repo's
+purpose is meant to expand (e.g. to also exercise the Framework-stage analyzers), that's a
+purpose change to record here and in `Overview/Master_Roadmap.md`, not a "catch-up" bug fix.
 
 ## Build & test
 
 CMake ≥ 3.20, C11 compiler, CTest. `external/ursatz` submodule (pinned commit
-`610e3c4...`) — no other third-party dependency. Two test executables
-(`test_analysis_pipeline`, `test_report_output`) registered with CTest.
+`610e3c4...`), with no other third-party dependency. Two test executables
+(`test_analysis_pipeline`, `test_report_output`) are registered with CTest.
 
 ## What depends on this repo
 
-Nothing — leaf/terminal CLI application.
+Nothing. This is a leaf/terminal CLI application.

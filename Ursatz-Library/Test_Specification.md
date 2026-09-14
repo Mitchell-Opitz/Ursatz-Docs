@@ -1,7 +1,7 @@
 # Test Specification (Deliverable U)
 
 **Last verified against repo state:** 2026-09-14 (self-audit pass, no repo changes since 2026-09-13). This is a Phase-1 kernel spec describing
-required test categories and their treatment; unchanged in substance since — the Framework
+required test categories and their treatment; unchanged in substance since. The Framework
 Stage session extended coverage (see `Status.md`'s note on architecture-guard tests) without
 changing this document's contract.
 
@@ -12,7 +12,7 @@ Specification.
 ## Purpose
 
 Answers: **how will we know the implementation is correct?** Not what the objects are
-(Domain Spec) or how software touches them (API Contract/Canonical IR) — the tests that must
+(Domain Spec) or how software touches them (API Contract/Canonical IR), but the tests that must
 exist and pass before an object/transformation/subsystem is considered correct. Absence of
 required coverage means the behavior is unverified.
 
@@ -22,9 +22,9 @@ Unit, Property-Based, Invariant, Golden, Serialization, Migration, Round-Trip,
 Relationship, Provenance, Context, Theory, Transformation, Analysis Regression,
 Generation Validation, Corpus Regression, Performance, Security, Fuzz
 ```
-This document gives full treatment to the categories the current phase exercises —
+This document gives full treatment to the categories the current phase exercises:
 **Invariant, Property-Based, Serialization/Round-Trip, Provenance, Transformation,
-Relationship, Canonical Equality** — plus Architecture tests (required, not its own category
+Relationship, Canonical Equality**, plus Architecture tests (required, not its own category
 row). The rest are stubbed in Deferred Categories with their owning future deliverable.
 
 ## Test category taxonomy
@@ -45,7 +45,7 @@ row). The rest are stubbed in Deferred Categories with their owning future deliv
 ## Invariant tests
 
 **Rule (API Contract C3):** every constructor validates invariants synchronously, raises
-`InvariantViolation` on violation — no "construct now, validate later." Every test below is
+`InvariantViolation` on violation; no "construct now, validate later." Every test below is
 construction-time.
 
 General pattern, applied per object:
@@ -72,8 +72,8 @@ Per-object invariants under test:
 | ProvenanceReference | `state` always explicit, never defaults to absent on omission; `state=present` requires a syntactically valid `provenance_id`; `state=absent` requires no `provenance_id` |
 
 **Fail-fast test:** for every object type, feed a payload that fails validation partway
-through a multi-field constructor → assert no object instance is observable anywhere (not
-returned, not partially stored, not cached) — only `InvariantViolation` propagates.
+through a multi-field constructor, then assert no object instance is observable anywhere (not
+returned, not partially stored, not cached); only `InvariantViolation` propagates.
 
 ## Property-based tests
 
@@ -115,7 +115,7 @@ round-trip preserves the present/absent distinction on ProvenanceReference witho
   collapsing to a single "no provenance" case
 ```
 
-**Composite graph round trip:** currently testable — events (NoteEvent), voice (Voice),
+**Composite graph round trip:** currently testable for events (NoteEvent), voice (Voice),
 provenance (ProvenanceReference), and now PitchSpelling (persisted end-to-end since Ursatz
 PR #38). Not yet complete for sonority, context, interpretations, relationships.
 
@@ -172,7 +172,7 @@ codebase, so this remains stubbed.
 
 `Relationship` (L6, full edge) and `RelationshipReference` (L1, opaque pointer) get different
 treatment. **Now exercised by real production code** (Period/Sentence/Form/Thematic Return
-Detection, each shipped with its own regression coverage) — not just a specified contract.
+Detection, each shipped with its own regression coverage), not just a specified contract.
 
 **Structural invariants:** source/target endpoint exists (non-dangling); predicate exists and
 permits the source's/target's actual type; required context/provenance exists where the
@@ -251,5 +251,5 @@ All seven fully-treated categories (Invariant, Property-Based, Serialization/Rou
 Provenance, Transformation, Relationship, Canonical Equality) plus Architecture tests are
 specified for the Phase-1 slice and exercised in practice by the full test suite (150+ tests
 as of PR #46). Still blocked on: a formal Relationship spec, a formal Provenance record-shape
-spec, a formal Transformation Architecture spec, and a formal wire-format spec — all
+spec, a formal Transformation Architecture spec, and a formal wire-format spec, all
 implemented in code ahead of their owning written spec, a disclosed gap (see `Status.md`).

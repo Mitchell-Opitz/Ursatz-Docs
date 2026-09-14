@@ -7,7 +7,7 @@ Read those first; this fills in what's left.
 
 **Primary Objective:** a theory-neutral computational foundation for representing,
 observing, interpreting, analyzing, transforming, generating, performing, rendering,
-importing, exporting, querying, and studying musical material — without any theory,
+importing, exporting, querying, and studying musical material, without any theory,
 notation system, storage technology, or generation technology defining the underlying
 musical domain.
 
@@ -15,7 +15,7 @@ musical domain.
 
 World/Source, Digital Artifact, Musical, Representation, Observation, Interpretation,
 Theory/Knowledge, Transformation, Generation, Performance, Query, Corpus, Persistence. These
-are architectural boundaries, not merely organizational ones — a plugin/consumer may not
+are architectural boundaries, not merely organizational ones; a plugin/consumer may not
 collapse them for convenience.
 
 ## Full phase roadmap (original design intent — see `Status.md` for actual current state)
@@ -70,7 +70,7 @@ collapse them for convenience.
 
 Several Phase-1 implementations (persistence, MIDI import, MusicXML export, Key
 Estimation/Chord Identification) shipped ahead of their owning deliverable specs (P, T, L)
-being formally written. This is a known, disclosed gap, not a silent one — the same
+being formally written. This is a known, disclosed gap, not a silent one; the same
 "disclosed scope cuts" principle in `Overview/Master_Roadmap.md` applies here.
 
 ## Architecture risks & mitigations (design-time, still the working list)
@@ -89,7 +89,7 @@ being formally written. This is a known, disclosed gap, not a silent one — the
 ## Extension mechanism
 
 New semantic concepts enter as framework-defined semantic objects, relationships,
-interpretations, procedures, or annotations — not by modifying core classes. A new concept
+interpretations, procedures, or annotations, not by modifying core classes. A new concept
 enters the foundational kernel only if: (1) framework-neutral, (2) required by multiple
 subsystems, (3) not reasonably representable as an extension, (4) semantically stable,
 (5) introduces no theory leakage.

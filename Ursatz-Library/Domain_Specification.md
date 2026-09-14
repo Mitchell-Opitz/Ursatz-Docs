@@ -1,7 +1,7 @@
 # Domain Ontology Specification (Deliverable B)
 
 **Last verified against repo state:** 2026-09-14 (self-audit pass, no repo changes since 2026-09-13). This is a Phase-1 kernel spec; Phase-1
-objects are complete and unchanged since — nothing in the 2026-09-09 Framework Stage session
+objects are complete and unchanged since; nothing in the 2026-09-09 Framework Stage session
 or since touched this layer.
 
 Source: Technical Design Document, System Registry, Dependency & Layer Specification.
@@ -46,14 +46,14 @@ floating point.
 
 ### MusicalTime — L2 (music-time)
 Exact rational *position* ("when"), structurally identical to Duration but semantically
-distinct — never used interchangeably. Same field shape, same no-float invariant. No
+distinct; the two are never used interchangeably. Same field shape, same no-float invariant. No
 inherent lower bound (negative time for pickups/anacrusis is a later modeling decision, not
-fixed here). Distinct from NotatedTime/PerformanceTime/AudioTime — no implicit conversion at
+fixed here). Distinct from NotatedTime/PerformanceTime/AudioTime, with no implicit conversion at
 the kernel level.
 
 ### TimeSpan — L2 (music-time)
 Explicit temporal region: `start: MusicalTime`, `end: MusicalTime`, `boundary: <working
-vocabulary, see below>`. Value equality includes boundary — two spans with equal start/end
+vocabulary, see below>`. Value equality includes boundary; two spans with equal start/end
 but different boundary are NOT equal. Invariant: `end >= start`; boundary MUST be explicit,
 never implicit/defaulted on deserialization.
 **Boundary vocabulary is provisional, not frozen.** `closed / open / left_closed /
@@ -62,27 +62,27 @@ authoritative version, provided explicitness and value-equality inclusion are pr
 
 ### PitchIdentity — L2 (music-pitch)
 Root of the pitch dimension hierarchy (→ PitchClass, PitchSpelling, PitchRealization). Names
-"a pitch, abstractly" — asserts nothing about tuning, pitch-class cardinality, or frequency
-(Law 18). Field: `token: opaque internal representation` — explicitly NOT an EntityID;
-carries no lifecycle/versioning semantics, exists only to make PitchIdentity comparable.
+"a pitch, abstractly," asserting nothing about tuning, pitch-class cardinality, or frequency
+(Law 18). Field: `token: opaque internal representation`, which is explicitly NOT an EntityID;
+it carries no lifecycle/versioning semantics, and exists only to make PitchIdentity comparable.
 Value object, no identity.
 **Equality — RESOLVED:** strict identity on the opaque token. Coarser equivalence (octave,
 enharmonic) is answered by `PitchClass` (music-pitch, implemented), which takes a
-caller-supplied equivalence relation — not by PitchIdentity itself. This is final, not a
+caller-supplied equivalence relation, not by PitchIdentity itself. This is final, not a
 placeholder.
 Invariants: MUST NOT assume 12 pitch classes, equal temperament, A4=440Hz, or integer MIDI
 numbers; MUST NOT carry EntityID/entity-lifecycle semantics.
 
 ### PitchSpelling — L2 (music-pitch)
 Notation-oriented pitch identity (letter/accidental/octave), independent of sounding
-realization — preserves the C#/Db distinction even when PitchRealization coincides (Law 18).
+realization, preserving the C#/Db distinction even when PitchRealization coincides (Law 18).
 Fields: `letter: enum{A..G}`, `accidental: Integer|enum`, `octave: Integer`. Value equality
-on the (letter, accidental, octave) triple — enharmonic equivalents are NOT value-equal.
+on the (letter, accidental, octave) triple; enharmonic equivalents are NOT value-equal.
 Depends on PitchIdentity. **Now persisted** (`persistence_note_events.c`) alongside NoteEvent
 and derived from MIDI note numbers at import.
 
 ### NoteEvent — L3 (music-events)
-**Category placement (Entity vs. Event vs. pure Occurrence/Value) remains open — see Open
+**Category placement (Entity vs. Event vs. pure Occurrence/Value) remains open; see Open
 Issues.** Documented here under the provisional Event-category treatment.
 
 The canonical, symbolic representation of "a note occurring." Explicitly NOT a notation
@@ -98,11 +98,11 @@ optional_pitch_spelling: PitchSpelling
 optional_voice: VoiceReference        -- opaque L1 reference, not a Voice-typed field
 provenance: ProvenanceReference       -- present/absent/omitted-is-invalid, see below
 ```
-`music-events` (L3) never imports `music-containers` (L4) — the Voice relationship is
+`music-events` (L3) never imports `music-containers` (L4); the Voice relationship is
 reference-only, resolved by code at L4+.
 
 **Note on Duration convention:** MIDIImporter's Duration values are tempo-independent
-whole-note-fraction units (fixed as of Ursatz PR #39) — not tick counts, not seconds. Any
+whole-note-fraction units (fixed as of Ursatz PR #39), not tick counts and not seconds. Any
 code consuming NoteEvent.duration must respect this convention explicitly, not assume ticks.
 
 Identity equality is primary (same EntityID+Version = same event); value/structural equality
@@ -116,8 +116,8 @@ Transformations create new NoteEvent identities with provenance links back to so
 (Law 20) rather than mutating in place.
 
 ### Voice — L4 (music-containers)
-A logical stream/simultaneity grouping of NoteEvents — semantically inert with respect to
-orchestration/notation: does not imply an instrument, staff, part, or harmonic/melodic role.
+A logical stream/simultaneity grouping of NoteEvents. It is semantically inert with respect to
+orchestration/notation, and does not imply an instrument, staff, part, or harmonic/melodic role.
 Field: `id: EntityID`; membership represented via event references, not an owned/mutable
 list. May appear on multiple staves; a Staff may contain multiple voices. Distinct from Layer
 (notation-layer grouping) and Part (instrument/performer grouping). May depend on
@@ -136,8 +136,8 @@ Voice happens only at L4+.
 Lets Phase-1 objects (NoteEvent, Voice) participate in the first-class Relationship model
 (L6) without importing the full Relationship machinery. Field: `relationship_id: EntityID
 reference`, resolved only at L6+. Deliberately located at L1, not inside `music-relationship`,
-so lower layers can hold it legally. MUST NOT embed predicate/scope/context/evidence — those
-stay at L6. **Relationship itself is now implemented and in real production use** — see
+so lower layers can hold it legally. MUST NOT embed predicate/scope/context/evidence; those
+stay at L6. **Relationship itself is now implemented and in real production use**; see
 `Status.md`.
 
 ### ProvenanceReference — cross-cutting (L0–L1 ceiling), music-provenance
@@ -154,7 +154,7 @@ absent   → state=absent; explicit, first-class assertion that no provenance ap
 omitted  → field not represented at all. INVALID wherever the schema requires provenance.
            MUST NOT be treated as equivalent to "absent."
 ```
-Value equality on `(state, provenance_id)` — two `absent` references are equal regardless of
+Value equality on `(state, provenance_id)`; two `absent` references are equal regardless of
 `absence_reason` (a flagged, revisable modeling choice, not settled doctrine). Invariant:
 `state` must always be explicit; a present-state dangling reference is a violation, not a
 warning.
