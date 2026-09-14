@@ -1,6 +1,6 @@
 # Ursatz-GUI — Status
 
-**Last verified against repo state:** 2026-09-13, commit `877c52a` (PR #26). See
+**Last verified against repo state:** 2026-09-14 (self-audit pass, no repo changes since 2026-09-13), commit `877c52a` (PR #26). See
 `Reconciliation_Log.md` for how this was checked.
 
 ## Purpose
@@ -59,10 +59,10 @@ ursatz-gui-owned SQLite tables alongside Ursatz's own per-piece database:
 ## Build & test
 
 CMake, C11 compiler, civetweb v1.16 (via `FetchContent`), sqlite3 (transitively via Ursatz).
-`external/ursatz` submodule, currently at commit `5d10667...` (bumped repeatedly past the
-Framework-stage pin as Ursatz has continued shipping — see `Ursatz-Library/Status.md`). No
-Node/JS build tooling — frontend is hand-written static HTML/CSS/JS plus a vendored OSMD
-UMD build.
+`external/ursatz` submodule, currently pinned at `9fd5895...` — Ursatz's PR #46 tip, i.e.
+fully current with `Ursatz-Library/Status.md` (bumped repeatedly past the Framework-stage pin
+as Ursatz has continued shipping). No Node/JS build tooling — frontend is hand-written static
+HTML/CSS/JS plus a vendored OSMD UMD build.
 
 ## What depends on this repo
 

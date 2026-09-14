@@ -1,6 +1,6 @@
 # Registry — Theory Frameworks, Analysis, Generation (L7–L8)
 
-**Last verified against repo state:** 2026-09-13. Columns: Name | Category | Purpose |
+**Last verified against repo state:** 2026-09-14 (self-audit pass, no repo changes since 2026-09-13). Columns: Name | Category | Purpose |
 Module | Depends On | Depended On By | Phase | Status | Spec Ref | Normative? | Contract
 Type | Test Spec Ref. See `Registry_Index.md` for the full-Registry split and standing
 verification warning.
@@ -43,15 +43,28 @@ Thematic Return Detection | Procedure | Analyzer | music-analysis | Theme/ThemeO
 
 ## Generation
 
-IntentCompiler | Component | Natural language → structured Intent | music-generation | NLP layer, Intent schema | Constraint Extraction | 12 | Not Started | M (Intent) | Yes | Behavioral Contract | GenerationValidation
-ConstraintExtraction/Normalization | Concept | Intent → executable constraint set | music-generation | Intent | Conflict Detection | 12 | Not Started | L, M | Yes | Behavioral Contract | GenerationValidation
-ConflictDetection | Concept | Reports constraint conflicts explicitly | music-generation | Constraint set | GenerationPlan | 12 | Not Started | L | Yes | Behavioral Contract | GenerationValidation
-GenerationPlan | Entity | Structured plan feeding generators | music-generation | Intent, Constraints, Preferences | Generator | 12 | Not Started | M | Yes | Structural | GenerationValidation
-Generator (interface) | Interface | generate(plan) → CandidateSet | music-generation | GenerationPlan | ThemeGenerator, PhraseGenerator, etc. | 12 | Not Started | M | Yes | Interface Contract | GenerationValidation
-CandidateEvaluator | Component | Evaluates candidates vs rules/constraints/prefs/models | music-generation | Rule, Constraint, Preference, StatisticalModel | Selection | 12 | Not Started | L | Yes | Behavioral Contract | GenerationValidation
-GenerationRecord | Entity | Records seed, versions, config for reproducibility | music-generation | Provenance | Reproducibility Record | 12 | Not Started | K, M | Yes | Structural | GenerationValidation
+**Corrected 2026-09-14: this section previously marked every row "Not Started," which
+understated real code.** `src/generation/` (~1,159 lines) has genuine, non-stub
+implementations of the base types/components below — validation logic, identity equality,
+real error handling, not placeholder bodies. What's actually unbuilt is the top-level
+orchestration (`Generator`, `IntentCompiler`) that would wire these into a working
+generate-a-piece pipeline. Same shape as L5's Motif/Theme shells: real types exist, the
+algorithm consuming them doesn't.
+
+IntentCompiler | Component | Natural language → structured Intent | music-generation | NLP layer, Intent schema | Constraint Extraction | 12 | Not Started — header (`intent_compiler.h`) only, no `.c` implementation; the NLP layer itself is explicitly out of scope | M (Intent) | Yes | Behavioral Contract | GenerationValidation
+Intent | Entity | Structured compilation of a generation request | music-generation | Context, Constraints, Preferences | GenerationPlan | 12 | Implemented (base type) — `src/generation/intent.c` (251 lines), real construction/validation. Not yet produced by anything (IntentCompiler doesn't exist), so nothing populates one outside tests | M (partial) | Yes | Structural | GenerationValidation
+ConstraintExtraction/Normalization | Concept | Intent → executable constraint set | music-generation | Intent | Conflict Detection | 12 | Implemented (base type) — `src/generation/constraint_extraction.c` (117 lines), real logic | L, M | Yes | Behavioral Contract | GenerationValidation
+ConflictDetection | Concept | Reports constraint conflicts explicitly | music-generation | Constraint set | GenerationPlan | 12 | Implemented (base type) — `src/generation/conflict_detection.c` (114 lines): `conflict_detection_create()` has real null/bounds checks, `conflict_detection_severity()` implemented | L | Yes | Behavioral Contract | GenerationValidation
+GenerationPlan | Entity | Structured plan feeding generators | music-generation | Intent, Constraints, Preferences | Generator | 12 | Implemented (base type) — `src/generation/generation_plan.c` (72 lines) | M | Yes | Structural | GenerationValidation
+Generator (interface) | Interface | generate(plan) → CandidateSet | music-generation | GenerationPlan | ThemeGenerator, PhraseGenerator, etc. | 12 | Not Started — header (`generator.h`) only, no `.c` implementation. This is the actual orchestration gap: every input type below exists, nothing calls `generate()` | M | Yes | Interface Contract | GenerationValidation
+Candidate / CandidateSet | Entity | Proposed result pre-acceptance / a collection of them | music-generation / music-analysis | Material, Evaluations | Selection, CandidateEvaluator | 4/12 | Implemented (base type) — `src/generation/candidate.c` (359 lines): `candidate_create`, `candidate_set_create`, identity-equality functions, real validation | I, M | Yes | Structural | GenerationValidation
+CandidateEvaluator | Component | Evaluates candidates vs rules/constraints/prefs/models | music-generation | Rule, Constraint, Preference, StatisticalModel | Selection | 12 | Implemented (base type) — `src/generation/candidate_evaluator.c` (138 lines). Real dependencies (`Rule`, `StatisticalModel`) don't exist yet, so it has nothing real to evaluate against outside tests | L | Yes | Behavioral Contract | GenerationValidation
+GenerationRecord | Entity | Records seed, versions, config for reproducibility | music-generation | Provenance | Reproducibility Record | 12 | Implemented (base type) — `src/generation/generation_record.c` (108 lines) | K, M | Yes | Structural | GenerationValidation
 Hierarchical Generators (ThemeGenerator, PhraseGenerator, BasicIdeaGenerator) | Component | Composable generation levels | music-generation | Generator interface | Section/Work-level generation | 13 | Not Started | M | Yes | Behavioral Contract | GenerationValidation
 StatisticalModel | Entity | ML/statistical output object (features, prob, training corpus, version) | music-theory / ML boundary | Corpus, training pipeline | Tendency, CandidateEvaluator | 9 | Not Started | L | Yes | Structural | CorpusRegression
 
-**This whole section is the Ursatz-Composer repo's future scope.** Nothing here has started;
-see `Overview/Apps_Roadmap.md` Phase 3.
+**What this means for Ursatz-Composer's future scope** (`Overview/Apps_Roadmap.md` Phase 3):
+the base-type groundwork is further along than previously documented, but the actual
+generation *pipeline* — `Generator`/`IntentCompiler` orchestration, `Rule`/`StatisticalModel`
+inputs, a real ranking/preference layer — is still entirely unbuilt. Don't read the
+"Implemented (base type)" rows above as "generation works" — nothing produces music yet.

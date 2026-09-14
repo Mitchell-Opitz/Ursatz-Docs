@@ -1,6 +1,6 @@
 # Registry — Query, Notation, I/O, Corpus, Cross-Cutting, Transformation Subtypes (L9 + cross-cutting)
 
-**Last verified against repo state:** 2026-09-13. Columns: Name | Category | Purpose |
+**Last verified against repo state:** 2026-09-14 (self-audit pass, no repo changes since 2026-09-13). Columns: Name | Category | Purpose |
 Module | Depends On | Depended On By | Phase | Status | Spec Ref | Normative? | Contract
 Type | Test Spec Ref. See `Registry_Index.md` for the full-Registry split and standing
 verification warning.

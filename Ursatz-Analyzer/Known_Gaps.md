@@ -1,6 +1,6 @@
 # Ursatz-Analyzer — Known Gaps
 
-**Last verified against repo state:** 2026-09-13, commit `38b72a9` (PR #4). All items below
+**Last verified against repo state:** 2026-09-14 (self-audit pass, no repo changes since 2026-09-13), commit `38b72a9` (PR #4). All items below
 confirmed still present at this commit — none have changed since the prior pass.
 
 - **README.md contains only the title** (`# Ursatz-Analyzer`) — no build/usage/dependency

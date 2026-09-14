@@ -1,6 +1,6 @@
 # Technical Design Document — Ursatz Kernel
 
-**Last verified against repo state:** 2026-09-13. This document is the source for kernel
+**Last verified against repo state:** 2026-09-14 (self-audit pass, no repo changes since 2026-09-13). This document is the source for kernel
 scope/rationale not already covered by `Overview/Architecture_Principles.md` (25 Laws, layer
 model) or the dedicated specs (Domain, API Contract, Canonical IR, Dependency & Layer, Test).
 Read those first; this fills in what's left.

@@ -1,6 +1,6 @@
 # Dependency & Layer Specification
 
-**Last verified against repo state:** 2026-09-13. Layer contents table updated to reflect
+**Last verified against repo state:** 2026-09-14 (self-audit pass, no repo changes since 2026-09-13). Layer contents table updated to reflect
 current implementation status (through Ursatz PR #46); architectural rules unchanged.
 
 Source: Technical Design Document, System Registry.

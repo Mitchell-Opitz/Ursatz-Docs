@@ -1,6 +1,6 @@
 # System Registry — Index
 
-**Last verified against repo state:** 2026-09-13. The Registry is the architectural
+**Last verified against repo state:** 2026-09-14 (self-audit pass, no repo changes since 2026-09-13). The Registry is the architectural
 authority: every inter-module dependency must be represented here before implementation
 (see `Dependency_Layer_Specification.md`'s Registry-first rule). Full status narrative for
 what's built lives in `Status.md` / `Known_Gaps.md` — this Registry is the durable data-model

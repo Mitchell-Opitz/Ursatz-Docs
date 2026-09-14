@@ -1,6 +1,6 @@
 # Ursatz-GUI — Known Gaps
 
-**Last verified against repo state:** 2026-09-13, commit `877c52a` (PR #26).
+**Last verified against repo state:** 2026-09-14 (self-audit pass, no repo changes since 2026-09-13), commit `877c52a` (PR #26).
 
 ## Confirmed still present
 
@@ -19,9 +19,9 @@
 - **No authentication, no native app packaging** — both explicitly out of scope per this
   repo's own design.
 - **MusicXML export uses a synthetic 4/4 meter grid** for all pieces, since Ursatz has no
-  real meter data yet — cosmetic, not derived from the actual piece. (Note: this predates
-  the current pass and was not independently re-verified in this pass; re-confirm before
-  relying on it.)
+  real meter data yet — cosmetic, not derived from the actual piece. Re-verified 2026-09-14:
+  `analysis_service.c` sets a `ursatz:synthetic-meter` marker consumed by the frontend
+  specifically to flag this as synthetic, not authored.
 
 ## Resolved since the previous documented state (closed gaps — do not re-flag these)
 
@@ -30,13 +30,6 @@
 - ~~Corpus tool listed in sidebar but has no backend route or frontend behavior~~ —
   **closed, PRs #8, #18.** `routes/corpus.c` and the Collections grid UI are both real and
   wired.
-- ~~"Re-run analysis" without re-import not built~~ — status not independently re-checked in
-  this pass; verify before relying on either claim.
-
-## What to check next time this file is reconciled
-
-The MusicXML "synthetic meter" claim and the "re-run analysis" claim above were carried
-forward from the prior pass without independent re-verification in the 2026-09-13 pass (the
-verification agent's scope was the specific PR-level claims listed in
-`Reconciliation_Log.md`, not every prior claim). Confirm both against current code next time
-this file is touched, rather than assuming they're still accurate.
+**"Re-run analysis" without re-import is still not built** — re-verified 2026-09-14:
+`app.js` renders a "Re-run analysis" button with `disabled: true`. Still an open item, not a
+closed one — kept here rather than in the resolved list above.

@@ -1,6 +1,6 @@
 # API / Contract Specification — Software Interaction Layer
 
-**Last verified against repo state:** 2026-09-13. This is a Phase-1 kernel spec, scoped to
+**Last verified against repo state:** 2026-09-14 (self-audit pass, no repo changes since 2026-09-13). This is a Phase-1 kernel spec, scoped to
 the 10 Phase-1 objects + 3 reference types — unchanged by the Framework Stage session or
 since.
 
@@ -29,7 +29,7 @@ NoteEvent's category boundary, TimeSpan's boundary vocabulary.
 | Transformations | Primitive arithmetic only (see below); full Transformation Architecture is Phase 7 (implemented — see `Status.md` — but this document's Phase-1 scope doesn't re-derive that contract) |
 | Services | None — no Phase-1 object has a persistence contract in this document's scope (Deliverable P) |
 | Analyzers | None — this document's scope predates Phase 8; see `Status.md` for the real, implemented Analyzer interface |
-| Generators | None — Phase 12, not started |
+| Generators | None — the `Generator` orchestration interface itself is Phase 12, not started; several of its future input types (Candidate, GenerationPlan, ConflictDetection) do have real base-type implementations already — see `Registry/Registry_Theory_Analysis.md` |
 | Serialization | All 10 objects + 3 reference types — abstract round-trip contract only; wire format is Deliverable O's scope |
 
 ## Cross-cutting rules
@@ -244,7 +244,10 @@ Services   — repository/persistence interfaces. Owning deliverable: P (still u
              minimal SQLite persistence is implemented ahead of it — see Status.md).
 Analyzers  — Phase 8 (implemented — see Status.md; this document doesn't re-derive that
              contract, only flags that it postdates this document's scope).
-Generators — Phase 12 (not started).
+Generators — Phase 12 (the `Generator`/`IntentCompiler` orchestration interfaces are not
+             started; several base types they'd operate on already have real implementations
+             — see `Registry/Registry_Theory_Analysis.md`'s Generation section for the
+             accurate per-type breakdown, not this document).
 Query Architecture (collection-level pattern matching/search) — Deliverable Q, not written.
 ```
 

@@ -101,3 +101,57 @@ itself: **treat every status claim in this repo as unverified until a dated entr
 A periodic reconciliation pass (this kind of check) should happen every time a repo's own
 Roadmap-visible history advances meaningfully — not only when a contradiction is stumbled
 into, and not left implicit as "someone should do this eventually."
+
+## 2026-09-14 — Self-audit of the 2026-09-13 restructure
+
+**What triggered this:** immediately after the 2026-09-13 restructure, a user-requested
+self-check: re-verify the new docs against all three repos again. No repo had changed since
+(`ursatz` still `9fd5895`/PR #46, `ursatz-gui` still `877c52a`/PR #26, `ursatz-analyzer`
+still `38b72a9`/PR #4), so this was purely a check of whether the prior pass's writing was
+itself accurate — the exact "verify, don't assume" discipline this project keeps re-learning
+the hard way, applied to its own docs.
+
+**Method:** three independent audit agents, one per repo, each given the relevant `Status.md`
++ `Known_Gaps.md` (plus a sample of Registry/spec claims for Ursatz) and told to verify every
+falsifiable claim against real code/git history, skeptically.
+
+**Findings:**
+
+- **Ursatz-Analyzer** (`Status.md`, `Known_Gaps.md`) — all 9 checked claims CONFIRMED, zero
+  discrepancies. Clean.
+- **Ursatz-GUI** — all PR citations, view/route wiring, table names, RNG/Accept-Dispute/
+  Relationship-stopgap claims CONFIRMED. Two items `Known_Gaps.md` had explicitly flagged as
+  "not independently re-verified in the prior pass" (synthetic-meter marker, disabled
+  re-run-analysis button) were checked and found **accurate** — the hedge was appropriately
+  cautious but unnecessary; both now stated plainly, hedge removed.
+  One real error found: **`Status.md` cited the wrong submodule pin hash** (`5d10667...`,
+  which is actually a bump-*commit* hash in ursatz-gui's own history, not the submodule's
+  pinned SHA). The real pin is `9fd5895` — Ursatz's PR #46 tip, i.e. fully current. Corrected.
+- **Ursatz-Library** — the large majority of claims (PR #36–#46 fixes, TuningSystem/
+  PitchRealization existing-but-unused, no repository classes, Uncertainty's 3-of-8 kinds,
+  Constraint/Preference stubs) CONFIRMED with exact file/line citations. **One significant,
+  repeated error found:** the Generation layer (`src/generation/`, ~1,159 lines) was
+  described as "interface contract only, no concrete implementation, not started" in
+  `Status.md`, and every one of `IntentCompiler`/`ConstraintExtraction`/`ConflictDetection`/
+  `GenerationPlan`/`CandidateEvaluator`/`GenerationRecord` was marked "Not Started" in
+  `Registry_Theory_Analysis.md` (with the same understatement echoed in
+  `API_Contract_Specification.md` and `Test_Specification.md`). In fact, `Candidate`/
+  `CandidateSet`, `CandidateEvaluator`, `ConflictDetection`, `ConstraintExtraction`,
+  `GenerationPlan`, `GenerationRecord`, and `Intent` are all real, non-stub implementations
+  with genuine validation logic — the same "base type implemented as a shell, no algorithm
+  wired up yet" shape already correctly documented for L5's Motif/Theme types, just not
+  recognized as the same pattern here. Only `Generator` and `IntentCompiler` (the top-level
+  orchestration interfaces) are genuinely header-only. Corrected across all four files.
+
+**Root cause of the Generation-layer miss:** whoever verified this section (in the prior
+day's pass) apparently checked only the two named top-level interfaces
+(`generator.h`/`intent_compiler.h`) rather than grepping the rest of `src/generation/` — an
+easy trap when a directory's most prominent files are its unimplemented ones. Worth
+remembering as a specific failure mode, not just "verify more": **when a module has both an
+orchestration interface and supporting base types, check the base types separately — a
+missing top-level interface doesn't mean the directory is empty.**
+
+**Outcome:** three corrections made (one GUI submodule-pin hash, the Generation-layer status
+across four Library files, two Known_Gaps hedges resolved to plain statements). Everything
+else in the 2026-09-13 restructure held up under independent re-verification. Verification
+headers on all audited files bumped to 2026-09-14.

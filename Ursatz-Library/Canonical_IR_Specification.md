@@ -1,6 +1,6 @@
 # Canonical IR Specification (Deliverable N)
 
-**Last verified against repo state:** 2026-09-13. This is a Phase-1 kernel spec; Phase-1
+**Last verified against repo state:** 2026-09-14 (self-audit pass, no repo changes since 2026-09-13). This is a Phase-1 kernel spec; Phase-1
 objects are complete and unchanged since — nothing in the 2026-09-09 Framework Stage session
 or since (through Ursatz PR #46) touched this layer. Content below is otherwise unchanged
 from the prior version (previously "v3").

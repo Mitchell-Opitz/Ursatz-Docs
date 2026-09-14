@@ -1,6 +1,6 @@
 # Ursatz Library — Known Gaps
 
-**Last verified against repo state:** 2026-09-13, commit `9fd5895` (PR #46).
+**Last verified against repo state:** 2026-09-14 (self-audit pass, no repo changes since 2026-09-13), commit `9fd5895` (PR #46).
 
 Each entry: what's missing/limited, why it's a disclosed cut rather than a silent one, and
 what it blocks.

@@ -1,6 +1,6 @@
 # Test Specification (Deliverable U)
 
-**Last verified against repo state:** 2026-09-13. This is a Phase-1 kernel spec describing
+**Last verified against repo state:** 2026-09-14 (self-audit pass, no repo changes since 2026-09-13). This is a Phase-1 kernel spec describing
 required test categories and their treatment; unchanged in substance since — the Framework
 Stage session extended coverage (see `Status.md`'s note on architecture-guard tests) without
 changing this document's contract.
@@ -239,7 +239,7 @@ growing with each PR through #46.
 | Context | Future Context spec | Context composition not yet specified |
 | Theory | Future Theory/Rule/Constraint spec | Constraint/Preference remain deliberate stubs |
 | Analysis Regression | — | **Partially addressed**: analyzer-level unit/regression tests exist per analyzer, but the full-corpus verification pass (`framework-v1-reference-set`, all 5 pieces, output checked not just registration) is still the open item — see `Overview/Master_Roadmap.md` |
-| Generation Validation | Generation phase | No Intent/Constraint objects specified |
+| Generation Validation | Generation phase | `Intent`/`ConstraintExtraction`/`Candidate`/etc. exist as real base types (`src/generation/`), but no `Generator`/`IntentCompiler` orchestration exists to produce output worth regression-testing — see `Registry/Registry_Theory_Analysis.md` |
 | Corpus Regression | — | `CorpusRegression` test exists but verifies registration only, not analysis output |
 | Performance | Ongoing, cross-cutting | No performance budget defined yet |
 | Security/Fuzz | Future I/O deliverable | Requires a formal wire format to exist first |

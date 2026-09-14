@@ -1,6 +1,6 @@
 # Ursatz Library — Status
 
-**Last verified against repo state:** 2026-09-13, commit `9fd5895` (PR #46). See
+**Last verified against repo state:** 2026-09-14 (self-audit pass, no repo changes since 2026-09-13), commit `9fd5895` (PR #46). See
 `Reconciliation_Log.md` for how this was checked.
 
 ## Purpose
@@ -60,8 +60,14 @@ null-checking but always return a documented placeholder). `Rule`, `Heuristic`, 
   (first real `Relationship` use, `precedes`), Sentence Detection (chains two
   `transformed_from` Relationships), Form Structure Detection + Thematic Return Detection
   (structural PAC/IAC-only section boundaries; `resembles` for recurrence).
-- **Generation:** interface contract only (`Generator`, `IntentCompiler`); no concrete
-  implementation. Not started.
+- **Generation:** more built than it first appears — `src/generation/` has real,
+  non-stub implementations (~1,159 lines) of `Candidate`/`CandidateSet` (incl. identity
+  equality), `CandidateEvaluator`, `ConflictDetection` (incl. severity), `ConstraintExtraction`,
+  `GenerationPlan`, `GenerationRecord`, and `Intent` — each with genuine validation logic, not
+  placeholder bodies. What's genuinely **not started** is the top-level orchestration: the
+  `Generator` and `IntentCompiler` interfaces have headers but no `.c` implementation, so
+  nothing wires these real pieces into an actual generate-a-piece pipeline yet. Same pattern
+  as L5's Motif/Theme shells: real base types exist, the algorithm consuming them doesn't.
 
 **L9 (I/O, Persistence, Corpus, Applications):**
 - **I/O:** MIDIImporter (SMF 0/1, note-on/off only, tempo-independent whole-note-fraction
