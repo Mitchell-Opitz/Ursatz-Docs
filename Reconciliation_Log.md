@@ -276,3 +276,21 @@ wrong-triad case, not preemptively.
 **What changed in docs:** `Ursatz-Library/Known_Gaps.md`'s "Chord-region matching exact-match
 rigidity" entry rewritten to name Problem B explicitly, record the approved stopgap and its
 accepted weaknesses, and flag it as unimplemented.
+
+## 2026-09-14 — New gap found while scoping the subset-match branch: non-4/4 MIDI import
+
+**What triggered this:** while scoping the chord-identification subset-match branch (previous
+entry) against Field 1, the implementer flagged that `midi_importer.c` never reads a file's
+`time_signature` meta-event — `MusicalTime`'s denominator is hardcoded to 4×PPQN, so any
+measure index derived from it (as the Bach fixture test's `measure_index_of()` does) only
+matches real notated measures in 4/4 pieces. Field 1 is 12/8, so a measure-indexed regression
+test against it can't be written correctly until this is fixed.
+
+**Decision:** confirmed as a real, separate, pre-existing gap, correctly descoped from the
+subset-match branch. That branch verifies against Field 1 using onset/beat-based checks
+instead of `measure_index_of()`. Meter-aware measure indexing is recommended as its own
+follow-up branch/ticket against `Ursatz`, gating any future measure-indexed test against Field
+1 or any other non-4/4 corpus piece.
+
+**What changed in docs:** added a new entry to `Ursatz-Library/Known_Gaps.md`'s
+"Concrete, currently-blocking" section for the hardcoded 4×PPQN denominator.

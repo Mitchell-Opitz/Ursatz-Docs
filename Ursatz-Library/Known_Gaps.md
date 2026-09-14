@@ -7,6 +7,17 @@ what it blocks.
 
 ## Concrete, currently-blocking
 
+**MIDI import ignores the time-signature meta-event; `MusicalTime`'s denominator is
+hardcoded to 4×PPQN (whole-note-relative).** `midi_importer.c` never reads a file's
+`time_signature` meta-event, so any "measure index" computed from `MusicalTime` (e.g. the Bach
+fixture test's `measure_index_of()`) only lines up with real notated measures in 4/4 pieces.
+Surfaced 2026-09-14 while scoping a chord-identification subset-match test against Field 1
+(`tests/fixtures/framework-v1-corpus/Field 1.mid`, which is 12/8, not 4/4) — a
+measure-indexed regression test for that fixture, or any other non-4/4 corpus piece, cannot be
+written correctly until this is fixed. Deliberately kept out of scope for the subset-match
+branch; recommend a separate branch/ticket for meter-aware measure indexing before writing
+measure-indexed tests against Field 1 (or Clementi/Mozart, if either turns out non-4/4 too).
+
 **`TuningSystem`/`PitchRealization` exist but are unused.** Both types now exist in code
 (`src/pitch/tuning_system.*`, `pitch_realization.*`, with their own tests), but a repo-wide
 check found zero references to either from `voice_leading_analysis.c`,
