@@ -44,12 +44,12 @@ NoteEvent's category boundary, TimeSpan's boundary vocabulary.
 - **C3 Fail-fast validation:** every constructor validates Domain Spec invariants
   synchronously and rejects on violation (`InvariantViolation`). No "construct now, validate
   later" path.
-- **C4 Reference opacity** — constructors/queries touching a reference type operate only on
+- **C4 Reference opacity:** constructors/queries touching a reference type operate only on
   the opaque EntityID-shaped value; no L0–L4 object may resolve a reference into its target.
   Resolution queries live separately (see Resolution below).
-- **C5 No floating point** — no MusicalTime/Duration/rational-derived quantity is ever
+- **C5 No floating point:** no MusicalTime/Duration/rational-derived quantity is ever
   accepted, returned, or compared as float/double (Law 19).
-- **C6 Provenance state is mandatory** — any constructor for an object carrying
+- **C6 Provenance state is mandatory:** any constructor for an object carrying
   ProvenanceReference (Phase 1: NoteEvent) requires an explicit `present`/`absent` state; no
   silent omission. Only Activity-produced objects (e.g. Transformation output) must use
   `state=present` with a resolving `provenance_id`; hand-authored objects may legitimately
@@ -212,7 +212,7 @@ ProvenanceReference.absent(absence_reason: String?) -> ProvenanceReference
 
 ## Resolution query contract (abstract, out of Phase-1 scope)
 
-Reference types deliberately expose no `resolve()` method themselves — resolution is
+Reference types deliberately expose no `resolve()` method themselves; resolution is
 performed by code above the target's layer:
 ```
 VoiceResolver.resolve(ref: VoiceReference) -> Voice | DanglingReference          -- L4+
