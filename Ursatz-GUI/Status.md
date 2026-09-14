@@ -1,7 +1,7 @@
 # Ursatz-GUI — Status
 
-**Last verified against repo state:** 2026-09-14 (self-audit pass, no repo changes since 2026-09-13), commit `877c52a` (PR #26). See
-`Reconciliation_Log.md` for how this was checked.
+**Last verified against repo state:** 2026-09-14, commit `<pending>` (PR #27, key-detection
+port). See `Reconciliation_Log.md` for how this was checked.
 
 ## Purpose
 
@@ -53,6 +53,16 @@ ursatz-gui-owned SQLite tables alongside Ursatz's own per-piece database,
 (Period/Sentence/Form/Thematic Return output, a stopgap pending a real Ursatz-side
 `RelationshipRepository`; see `Ursatz-Library/Known_Gaps.md`).
 
+**Key estimation, as of PR #27, matches Ursatz-Analyzer's PR #5 behavior** (the fix was
+ported directly, no new bugs this time): `estimate_and_store_global_key`'s own copy of
+`estimate_global_key` (`analysis_service.c`, explicitly commented as a port of
+Ursatz-Analyzer's `key_pipeline.c`) now tries the MIDI key-signature meta-event first, falls
+back to the closing-chord-first/opening-chord-second chord-based check, then falls back to the
+brute-force 12-candidate-tonic search, same as Ursatz-Analyzer. **This function is still a
+second, independently-maintained copy of that logic, not a shared library call** — see
+`Ursatz-Library/Known_Gaps.md` for why that's flagged as a standing risk, not resolved by this
+port.
+
 ## Fixed since the original scaffold (verified in code, not just claimed)
 
 - **Piece-detail heap-overflow** (PR #10). `handle_get_piece`'s buffer sizing underflowed
@@ -67,10 +77,11 @@ ursatz-gui-owned SQLite tables alongside Ursatz's own per-piece database,
 ## Build & test
 
 CMake, C11 compiler, civetweb v1.16 (via `FetchContent`), sqlite3 (transitively via Ursatz).
-`external/ursatz` submodule, currently pinned at `9fd5895...`, Ursatz's PR #46 tip. That means it
-is fully current with `Ursatz-Library/Status.md` (bumped repeatedly past the Framework-stage pin
-as Ursatz has continued shipping). There is no Node/JS build tooling; the frontend is hand-written
-static HTML/CSS/JS plus a vendored OSMD UMD build.
+`external/ursatz` submodule, pin not yet re-verified against Ursatz's PR #47 (key-signature
+scanner) tip since this PR ported the fix directly into `analysis_service.c` rather than
+consuming it via the submodule — confirm/update the pinned commit on the next reconciliation
+pass. There is no Node/JS build tooling; the frontend is hand-written static HTML/CSS/JS plus a
+vendored OSMD UMD build.
 
 ## What depends on this repo
 

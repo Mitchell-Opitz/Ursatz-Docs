@@ -65,8 +65,10 @@ wrong tonics pass. This is the final brute-force fallback used when no MIDI key-
 meta-event is present and the calling analyzer's own chord-based fallback (see
 `Ursatz-Analyzer/Status.md`) doesn't resolve it either; as of PR #47 (key-signature scanner)
 and Ursatz-Analyzer PR #5 (chord-fallback tonic priority + flat spelling), it is rarely reached
-for real files, but the bug itself is untouched, confirmed present, unfixed, on `main`. Flagged
-as out of scope for both of those changes; recommend a dedicated branch if it needs closing.
+for real files, but the bug itself is untouched, confirmed present, unfixed, on `main`. Ursatz-GUI's
+own independently-maintained port of this same fallback logic (`analysis_service.c`, see
+`Ursatz-GUI/Known_Gaps.md`) inherits it too, as of GUI PR #27. Flagged as out of scope for all
+of these changes; recommend a dedicated branch if it needs closing.
 
 ## Analyzer-specific limitations (by design, not bugs)
 

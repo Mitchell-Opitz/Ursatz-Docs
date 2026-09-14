@@ -1,8 +1,24 @@
 # Ursatz-GUI — Known Gaps
 
-**Last verified against repo state:** 2026-09-14 (self-audit pass, no repo changes since 2026-09-13), commit `877c52a` (PR #26).
+**Last verified against repo state:** 2026-09-14, commit `<pending>` (PR #27, key-detection
+port).
 
 ## Confirmed still present
+
+- **`analysis_service.c` maintains its own independent port of key-estimation logic
+  instead of linking Ursatz-Analyzer as a library.** This is the second time the duplication
+  has mattered in practice: Ursatz-Analyzer's key-detection fix (PR #5) didn't reach the GUI
+  until ported separately here (PR #27), because `estimate_global_key` in `analysis_service.c`
+  is a standalone copy, not a shared call. PR #27 kept the two in sync this time, but nothing
+  enforces that going forward — any future Ursatz-Analyzer fix to key/chord/cadence logic needs
+  a second, manual port to this file, or the GUI silently drifts again. Architect-level
+  discussion (2026-09-14) concluded the real fix, having Ursatz-Analyzer's pipeline built as a
+  linkable library and consumed here instead of vendored, requires a Registry-authorized new
+  inter-module dependency, extracting Ursatz-Analyzer's pipeline out of its CLI-only structure,
+  and untangling this file's persistence-interleaved analysis calls; deliberately deferred as
+  its own larger, separately-tracked effort rather than folded into this scoped port.
+  `key_identification.c`'s `matches_collection` containment bug (see
+  `Ursatz-Library/Known_Gaps.md`) is inherited by this duplicate copy too.
 
 - **Unseeded RNG for piece IDs.** `generate_piece_id` (`analysis_service.c`) combines
   `time(NULL)` with `rand()`, but no `srand()` call exists anywhere in `backend/src`. Every

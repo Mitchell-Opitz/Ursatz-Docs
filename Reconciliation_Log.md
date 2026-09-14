@@ -211,3 +211,38 @@ for the new scanner and the `matches_collection` cross-reference; `Ursatz-Analyz
 resolution order and the two mid-branch fixes. Exact merge commit hashes for both repos are
 not yet known to this docs repo (recorded as `<pending>` in the affected `Status.md`/
 `Known_Gaps.md` headers) — fill in on the next reconciliation pass once available.
+
+## 2026-09-14 — GUI key-detection port (Ursatz-GUI PR #27) + architecture question raised
+
+**What happened:** after the fixes above merged, the live GUI kept showing stale key
+signatures on reimport. Root cause: `Ursatz-GUI/backend/src/service/analysis_service.c` never
+called Ursatz-Analyzer at all — it carries its own independent, explicitly-commented-as-ported
+copy of `estimate_global_key` (the pre-PR-5 fixed-order 12-tonic scan, no key-signature read,
+no chord fallback), so Ursatz-Analyzer PR #5 was invisible to it. This is the same file's
+second confirmed drift from Ursatz-Analyzer's logic (it had already ported the old buggy
+version once before).
+
+Two options were weighed: (1) port the PR #5 fix directly into `analysis_service.c` (small,
+scoped, but a second copy to keep in sync going forward); (2) extract Ursatz-Analyzer's
+pipeline into a real library and have the GUI link it instead of vendoring a copy (removes the
+duplication permanently, but requires a Registry-authorized new inter-module dependency between
+two currently-sibling L9 Applications, restructuring Ursatz-Analyzer out of its CLI-only shape
+into an exportable library target, and untangling `analysis_service.c`'s
+persistence-interleaved analysis calls — real architecture work, not a patch). Decision: (1)
+now, to unblock the live GUI immediately with near-zero risk; (2) deliberately deferred as its
+own separately-tracked, Registry-reviewed effort rather than folded into this scoped fix.
+Shipped as `fix/key-detection` (Ursatz-GUI PR #27): the port applied the same three-source
+order (key-signature meta-event → closing-chord-first fallback → brute-force search) correctly
+from the start, no extra fix commits needed this time. 5/5 tests pass including a new 6-piece
+corpus regression run through the real import/save/get-piece path; user-confirmed live in the
+GUI.
+
+**Confirmed still open, out of scope for this pass:** `matches_collection`'s containment bug
+(unchanged, see above) is now also inherited by this GUI-owned copy of the fallback logic. The
+GUI/Analyzer logic-duplication itself is now a standing, explicitly tracked known gap (see
+`Ursatz-GUI/Known_Gaps.md`), not just an incident to close out — the option (2) refactor
+remains available to pick up whenever there's appetite for it.
+
+**What changed in docs:** `Ursatz-GUI/Status.md` (key-estimation paragraph, submodule-pin note)
+and `Known_Gaps.md` (new duplication-risk entry) updated; `Ursatz-Library/Known_Gaps.md`'s
+`matches_collection` entry extended to name the GUI's copy as a third affected call site.
