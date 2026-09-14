@@ -246,3 +246,33 @@ remains available to pick up whenever there's appetite for it.
 **What changed in docs:** `Ursatz-GUI/Status.md` (key-estimation paragraph, submodule-pin note)
 and `Known_Gaps.md` (new duplication-risk entry) updated; `Ursatz-Library/Known_Gaps.md`'s
 `matches_collection` entry extended to name the GUI's copy as a third affected call site.
+
+## 2026-09-14 — Chord identification non-chord-tone stopgap approved, not yet built
+
+**What triggered this:** Field 1 (`tests/fixtures/framework-v1-corpus/Field 1.mid`) exposed
+`common_practice_identify_triad`'s exact-match requirement (documented as deferred "Problem B"
+in `sonority_builder.h`): melody + accompaniment together commonly puts a passing/neighbor tone
+in the same beat as the underlying triad, giving 4+ distinct scale degrees, which never matches
+a 3-degree triad even when the harmony is unambiguous to a listener.
+
+**Decision:** approved a subset-match stopgap (accept a triad if its 3 degrees are a subset of
+the beat's distinct degrees, extra degrees ignored as passing tones) with a naive first-match
+tie-break, not the more complete duration/beat-strength-weighted tie-break. Rationale: only one
+fixture (Field 1) currently demonstrates the need; building metric weighting against a single
+observed case, before running the full 5-piece corpus, would be solving a hypothetical rather
+than a demonstrated problem, the same premature-generalization risk this project's process
+discipline (`Overview/Master_Roadmap.md`) already flags against. Ambiguous-tie cases (a degree
+set that fits two triads at once, e.g. `{1,3,5,6}` fitting both I and vi) should be logged/
+flagged rather than resolved silently, so real incidence data comes back from the corpus run
+instead of the failure mode being invisible. Kept in `triad_identification.c` rather than moved
+to a pre-filtering layer: a principled non-chord-tone filter would need to know what counts as
+passing independent of any candidate triad, which is circular without voice-leading/weighting
+data that doesn't exist yet.
+
+**Status:** decision recorded, **not yet implemented**. Revisit the weighted tie-break only if
+the corpus run (once this stopgap and Phase 2.5 verification proceed) actually surfaces a
+wrong-triad case, not preemptively.
+
+**What changed in docs:** `Ursatz-Library/Known_Gaps.md`'s "Chord-region matching exact-match
+rigidity" entry rewritten to name Problem B explicitly, record the approved stopgap and its
+accepted weaknesses, and flag it as unimplemented.

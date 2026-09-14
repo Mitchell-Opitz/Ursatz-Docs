@@ -72,9 +72,31 @@ of these changes; recommend a dedicated branch if it needs closing.
 
 ## Analyzer-specific limitations (by design, not bugs)
 
-- **Chord-region matching exact-match rigidity.** This extends to seventh-chord matching too
-  (inherited by construction); there is no tolerance for extra non-chord tones. Partially mitigated
-  by the new beat-grid Sonority construction (see above) but not eliminated.
+- **Chord-region matching exact-match rigidity ("Problem B," `sonority_builder.h`).**
+  `common_practice_identify_triad` (`frameworks/common-practice-minimal/triad_identification.c`)
+  requires a Sonority's notes to reduce to exactly 3 distinct scale degrees matching a diatonic
+  triad, with no tolerance for extra non-chord tones. This extends to seventh-chord matching too
+  (inherited by construction). Partially mitigated by the new beat-grid Sonority construction
+  (see above) but not eliminated: it surfaces concretely on Field 1 (melody + accompaniment
+  simultaneously — a beat commonly carries a passing/neighbor tone alongside the underlying
+  triad, giving 4+ distinct degrees and no match at all, even when the harmony is unambiguous).
+  **Approved stopgap (architect decision, 2026-09-14), not yet implemented:** accept a triad
+  match when its 3 degrees are a *subset* of the beat's distinct degrees (extra degrees ignored
+  as passing tones), with a naive first-match tie-break rather than duration/beat-strength
+  weighting. Known, accepted weaknesses of this stopgap: (1) an ambiguous beat whose degree set
+  satisfies two triads at once (e.g. `{1,3,5,6}` fits both I and vi) can silently return the
+  wrong one, where today's exact-match at least fails loudly instead of guessing; (2) two or
+  more simultaneous non-chord degrees still break the match entirely; (3) no metric/duration
+  weighting, so ties aren't resolved by "which triad accounts for more of the beat's sounding
+  time." A real duration-weighted fix was deliberately deferred rather than built now: only one
+  fixture (Field 1) currently demonstrates the need, and building metric weighting against a
+  single hypothetical case is premature relative to running the full 5-piece corpus first and
+  seeing which failures actually occur. Kept in `triad_identification.c` rather than moved to a
+  pre-filtering layer, since a principled non-chord-tone filter would need to know what counts
+  as a passing tone independent of any candidate triad, itself circular without the
+  voice-leading/weighting data this project doesn't have yet. Whoever implements this should log
+  or flag ambiguous-tie cases (multiple triads fit) rather than resolve them silently, so real
+  incidence data comes back from the corpus run instead of being invisible.
 - **Cadence Classification's PAC vs. IAC.** This requires soprano-resolution data that doesn't
   exist anywhere in the codebase, so it reports "authentic (unclassified)" rather than guessing.
   This is correct, disclosed behavior, not a bug.
