@@ -13,6 +13,14 @@ static frontend shell renders a sidebar/topbar around whichever tool is active. 
 Ursatz's analysis engine a browser-based front end. Native packaging, authentication, and the
 Generator tool remain explicitly out of scope.
 
+**Notation rendering exists specifically to make analysis verifiable.** The pre-notation
+alternative — a flat text dump of every chord/phrase/cadence, hundreds of lines per piece —
+made it practically impossible to check whether analysis output was actually correct, not
+just present. The Score tab and note-level claim highlighting (PRs #20/#21) are the
+verification instrument for Framework v1, not a separate feature track — see
+`Overview/Master_Roadmap.md`'s Phase 2.5 section for why this repo's growth outpaced
+Ursatz-Analyzer's.
+
 ## Current implementation
 
 **Backend (`backend/src/`):** civetweb-based HTTP server (`server.c`), routes under

@@ -73,6 +73,19 @@ pass checked Bach only, surfaced two analysis-quality bugs (chord-Interpretation
 non-uniqueness, thematic-return over-matching) — both since fixed in code (PRs #36, #37) but
 **not re-verified against the corpus**, and the other 4 pieces were never checked at all.
 
+**Why this waited on Ursatz-GUI's growth, rather than being neglected:** the original way to
+inspect analyzer output was a flat text dump — every chord, every phrase, every cadence,
+hundreds of lines per piece. That format made real verification practically impossible; no
+one can reliably eyeball "is PAC actually happening at measure 12" out of a wall of text.
+Ursatz-GUI's Library/Analysis/Score-tab work (PRs #17–#21) wasn't a separate feature track
+competing with verification — it *was* building the verification instrument: real notation
+rendering with claims highlighted on the actual notes they target is the only practical way
+to confirm analysis output is correct, not just present. That tooling only became real with
+PR #20/#21 (Score tab + note highlighting), which is why the full-corpus verification pass
+is still pending now rather than having happened earlier — it wasn't deferred, it was
+blocked on the thing that makes it checkable at all. Now that the tooling exists, running the
+other 4 pieces through it is a live, actionable next step, not a stalled one.
+
 ## Known ecosystem-wide blocker
 
 `TuningSystem`/`PitchRealization` (Ursatz kernel, `src/pitch/`) now exist as types but are

@@ -155,3 +155,24 @@ missing top-level interface doesn't mean the directory is empty.**
 across four Library files, two Known_Gaps hedges resolved to plain statements). Everything
 else in the 2026-09-13 restructure held up under independent re-verification. Verification
 headers on all audited files bumped to 2026-09-14.
+
+## 2026-09-14 — Rationale clarification: why Ursatz-GUI outgrew Ursatz-Analyzer
+
+**What triggered this:** after the self-audit above, a question about whether the project's
+overall direction was still sound surfaced a real documentation gap — nothing in this repo
+explained *why* Ursatz-GUI's feature set (Library/Collections/Analysis views, Score tab, note
+highlighting) grew so much faster than Ursatz-Analyzer's. The undocumented reasoning: the
+original way to inspect analyzer output was a flat text dump of every chord/phrase/cadence,
+hundreds of lines per piece — a format that made real verification practically impossible.
+Ursatz-GUI's notation-rendering work (PRs #20/#21: Score tab + note-level claim highlighting)
+isn't a separate feature track competing with Framework v1 verification — it *is* the
+verification instrument, since seeing claims rendered against actual notation is the only
+practical way to confirm analysis is correct, not just present. The full-corpus verification
+pass being incomplete (see the 2026-09-09 and 2026-09-13 entries above) was accurately
+described as an open gap, but this entry corrects the *implied reason why* — it wasn't
+neglected, it was blocked on this tooling existing at all, which it only recently does.
+
+**What changed:** added this rationale to `Overview/Master_Roadmap.md`'s Phase 2.5 section
+and a short cross-reference in `Ursatz-GUI/Status.md`'s Purpose, so the connection between
+"why GUI grew this way" and "why verification is still pending" is documented in both
+directions instead of living only in the project owner's head.
