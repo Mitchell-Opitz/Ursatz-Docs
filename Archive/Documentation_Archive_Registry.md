@@ -1,8 +1,42 @@
 # Documentation Archive Registry
 
-Full inventory of everything currently in local Archive (14 files moved out of Project Files on 2026-09-07, three of which were fully deleted from Project Files that same day). This is the reference for what exists and what it contains, so any file can be requested back by name without guessing.
+Full inventory of everything in `Archive/`, across every archiving pass. This is the
+reference for what exists and what it contains, so any file can be requested back by name
+without guessing. Living index — update it whenever files move into `Archive/`; don't rely
+on folder dates alone to explain what's inside them.
 
-Last updated: 2026-09-07 (post-condensing pass)
+Last updated: 2026-09-13 (full documentation restructure — see `Reconciliation_Log.md`)
+
+---
+
+## 2026-09-13 — full restructure (`Archive/20260913/`)
+
+All 14 root-level docs from the 2026-09-07 condensing pass were superseded by the current
+`Overview/`, `Ursatz-Library/`, `Ursatz-Analyzer/`, `Ursatz-GUI/` structure (see the root
+`README.md`). Moved to archive rather than deleted, since each still has historical value as
+a point-in-time snapshot:
+
+| Archived file | Superseded by |
+|---|---|
+| Master_Roadmap_v6_20260907.md | `Overview/Master_Roadmap.md` |
+| Ursatz_Apps_Roadmap_v3_20260907.md | `Overview/Apps_Roadmap.md` |
+| TDD_v5_20260907.md | `Overview/Architecture_Principles.md` + `Ursatz-Library/Technical_Design_Document.md` |
+| Domain_Specification_v4_20260907.md | `Ursatz-Library/Domain_Specification.md` |
+| API_Contract_Specification_v4_20260907.md | `Ursatz-Library/API_Contract_Specification.md` |
+| Canonical_IR_Specification_v3_20260907.md | `Ursatz-Library/Canonical_IR_Specification.md` |
+| Dependency_&_Layer_Specification_v5_20260907.md | `Ursatz-Library/Dependency_Layer_Specification.md` |
+| Test_Specification_v3_20260907.md | `Ursatz-Library/Test_Specification.md` |
+| System_Registry_v7_20260907.md | `Ursatz-Library/Registry/*.md` (split by layer) |
+| Ursatz_Self_Analysis_20260907.md | `Ursatz-Library/Status.md` + `Known_Gaps.md` |
+| Ursatz_Analyzer_Self_Analysis_20260907.md | `Ursatz-Analyzer/Status.md` + `Known_Gaps.md` |
+| Ursatz_GUI_Self_Analysis_20260907.md | `Ursatz-GUI/Status.md` + `Known_Gaps.md` |
+| Reconciliation_Report_20260907.md | `Reconciliation_Log.md` (2026-09-07 entry) |
+| Documentation_Archive_Registry_20260907.md | this file (renamed, dropped date suffix — now a living index like everything else) |
+
+**Why archived, not deleted:** each described real, dated project state accurately at the
+time; none were wrong, just superseded by a structure better suited to fast lookup and easy
+incremental updates as the ecosystem grows (see `Reconciliation_Log.md`'s 2026-09-13 entry
+for the reasoning).
 
 ---
 
