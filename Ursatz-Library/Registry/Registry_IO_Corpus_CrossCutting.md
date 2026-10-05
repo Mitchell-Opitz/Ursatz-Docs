@@ -1,6 +1,6 @@
 # Registry — Query, Notation, I/O, Corpus, Cross-Cutting, Transformation Subtypes (L9 + cross-cutting)
 
-**Last verified against repo state:** 2026-09-14 (self-audit pass, no repo changes since 2026-09-13). Columns: Name | Category | Purpose |
+**Last verified against repo state:** 2026-10-05 (Ursatz `090695c`, PR #97). Columns: Name | Category | Purpose |
 Module | Depends On | Depended On By | Phase | Status | Spec Ref | Normative? | Contract
 Type | Test Spec Ref. See `Registry_Index.md` for the full-Registry split and standing
 verification warning.
@@ -18,7 +18,12 @@ Views (Temporal, Pitch, Rhythmic, Voice, Harmonic, Motivic, Formal, Performance,
 Score Model (Staff, Clef, KeySignature, TimeSignature, Measure, Beam, Stem, Barline, Tuplet, Layout, Page, System) | Concept group | Specialized representation layer, non-authoritative over canonical events | music-notation | Canonical Events, Containers | Notation rendering | 2 | Not Started | F, N | Yes (non-authority rule explicit; internal item list illustrative) | Structural | Invariant
 Notation Document Model | Concept | Preserves engraving/layout/editorial info without canonical-event equivalent | music-notation | DigitalArtifact | MusicXML/MEI adapters | 2/14 | Not Started | N | Yes | Structural | RoundTrip
 
-**Note:** Ursatz-GUI renders notation via a real MusicXML export (see I/O Adapters below)
+**Note:** some Score Model items now exist as kernel value types: `Clef`, `StaffPosition`,
+`KeySignature` (L2 pitch), `TimeSignature`, `NoteValue`, `Tuplet` (L2 time), with their
+conventions in `frameworks/standard-notation`, `standard-rhythm` and `standard-meter`. Accepted
+at L2 on 2026-10-05 as notation-neutral values; layout, beams, barlines and pages remain unbuilt.
+
+Ursatz-GUI renders notation via a real MusicXML export (see I/O Adapters below)
 consumed by a vendored OpenSheetMusicDisplay frontend, an application-level rendering
 solution, not an implementation of this kernel module. The kernel-level Score Model/Notation
 Document Model remain entirely unbuilt.
@@ -30,7 +35,8 @@ DigitalArtifact | Entity | External digital object (PDF, MusicXML, MIDI, MEI, WA
 
 ## I/O Adapters
 
-MIDIImporter | Adapter | MIDI → Observations/Candidates → Canonical | music-io | MIDI transport concepts | Canonical IR | 14 | Implemented (minimal); SMF type 0/1, note-on/off only, tempo-independent whole-note-fraction Duration units (PR #39), real per-track Voice assignment via interval-graph coloring (PRs #43/#46), flattens multi-track files, fails cleanly on malformed input | T | Yes | Behavioral Contract | RoundTrip
+MIDIImporter | Adapter | MIDI → Observations/Candidates → Canonical | music-io | MIDI transport concepts | Canonical IR | 14 | Implemented (minimal); SMF type 0/1, note-on/off only, tempo-independent whole-note-fraction units (PR #39), per-track Voice assignment for single-channel files (PRs #43/#46). Does NOT read time-signature (0xFF 0x58) or tempo meta-events, so measures only line up in 4/4; TimeSignature now exists as the value it should produce | T | Yes | Behavioral Contract | RoundTrip
+MIDIKeySignatureScanner | Adapter | Reads the first Key Signature meta-event (0xFF 0x59) from an SMF buffer | music-io | SMF bytes | Ursatz-Analyzer key_pipeline, Ursatz-GUI analysis_service | 14 | Implemented (PR #47, `src/io/midi_key_signature.*`), separate from MIDIImporter by design; first event only, no key changes; does not yet produce the KeySignature value type | T | Yes | Behavioral Contract | Unit
 MusicXMLImporter | Adapter | MusicXML → Canonical | music-io | Notation Document Model | Canonical IR | 14 | Not Started | T | Yes | Behavioral Contract | RoundTrip
 MEIImporter | Adapter | MEI → Canonical | music-io | Notation Document Model | Canonical IR | 14 | Not Started | T | Yes | Behavioral Contract | RoundTrip
 ABCImporter | Adapter | ABC → Canonical | music-io | — | Canonical IR | 14 | Not Started | T | Yes | Behavioral Contract | RoundTrip
@@ -49,7 +55,7 @@ Corpus | Entity | Collection of sources/documents for statistical study | music-
 Corpus Ingestion / Normalization | Pipeline | Corpus source → Canonical Representation | music-corpus | Importers | Feature Extraction | 15 | Not Started | Q | Yes | Behavioral Contract | CorpusRegression
 Corpus Feature Extraction / Indexing | Pipeline | Canonical → features → index | music-corpus | Canonical IR | Statistics | 15 | Not Started | Q | Yes | Behavioral Contract | CorpusRegression
 Corpus Statistics / Style Models | Concept | Derived, non-authoritative statistical knowledge | corpus_stats | corpus, persistence, interpretation, identity | Tendency, StatisticalModel | 15 | Implemented (minimal, most-common-chord only) | L, Q | Yes (non-authority rule explicit) | Structural | CorpusRegression
-StyleModel | Entity | Frameworks + constraints + preferences + tendencies + prob. models (versioned) | music-theory | Corpus Statistics | Generation | 15 | Not Started | L | Yes | Structural | CorpusRegression
+StyleModel | Entity | Frameworks + constraints + preferences + tendencies + prob. models (versioned) | music-theory | Corpus Statistics | Generation | 15 | Implemented (shape only, `src/theory/style_model.h`: opaque style features + training-corpus label, no fitting) | L | Yes | Structural | CorpusRegression
 framework-v1-reference-set | Corpus instance | Fixed test corpus defining Framework v1's finite-endpoint criterion | music-corpus | Corpus API | Framework-stage AnalysisRegression (intended, not yet built) | 15 | Registered. 5 pieces: Bach (BWV Anh. 114), Clementi (Op. 36), Field (Nocturne No. 1), Field (Nocturne No. 5), Mozart (K.545). Fixture files in `tests/fixtures/framework-v1-corpus/`. `CorpusRegression` verifies registration ONLY. Manual GUI verification: Bach checked, surfaced two bugs, both since fixed in code (PRs #36, #37) but not re-verified against the corpus. Other 4 pieces never checked. **This remains the actual remaining gap for calling Framework v1 "done"**; see `Overview/Master_Roadmap.md` | Q | Yes | Structural | CorpusRegression
 
 ## Plugin / Security
@@ -69,14 +75,14 @@ Provenance Invariants | Concept | Ancestor/activity/agent existence, DAG acyclic
 ## Testing
 
 Testing Categories (Unit, Property-Based, Invariant, Golden, Serialization, Migration, Round-Trip, Relationship, Provenance, Context, Theory, Transformation, Analysis Regression, Generation Validation, Corpus Regression, Performance, Security, Fuzz) | Concept | Required test strategy coverage | cross-cutting (test infra) | Respective modules under test | All modules | Ongoing | See `Test_Specification.md` for per-category status | U | Yes | Process Contract | N/A (self-defining)
-Architecture Tests | Concept | Enforce dependency direction / no theory leakage | cross-cutting (test infra) | Module Architecture | CI gating | Ongoing | Implemented; every analyzer added since 2026-09-09 shipped with its own architecture guard test confirming no upward/sideways layer leakage. Full suite 150+ tests as of PR #46 | U | Yes | Process Contract | N/A (self-defining)
+Architecture Tests | Concept | Enforce dependency direction / no theory leakage | cross-cutting (test infra) | Module Architecture | CI gating | Ongoing | Implemented for every kernel module and every framework. Kernel guards run in CI (220 kernel tests as of PR #97). Framework guards and all 248 framework tests do NOT run from the root build or CI (each framework adds its tests only when built standalone); `architecture_common_practice_minimal` fails when run. Fixing this is the first open work item | U | Yes | Process Contract | N/A (self-defining)
 
 ## Work / Edition Model
 
-Edition | Entity | Distinct published version of a Work | music-containers | Work | Source Variants | Post kernel | Not Started | B, F | Yes | Structural | Invariant
-Arrangement | Entity | Adapted version of a Work | music-containers | Work | — | Post kernel | Not Started | B, F | Yes | Structural | Invariant
-Revision | Entity | Version of a Work/Edition | music-containers | Work/Edition, Version | — | Post kernel | Not Started | A, B | Yes | Structural | Invariant
-SourceVariant | Value | Variant reading / editorial disagreement | music-containers | Source | Scholarly Annotation | Post kernel | Not Started | B | Partial ("shall eventually support" — deferred normative) | Reference Concept (deferred) | TBD
+Edition | Entity | Distinct published version of a Work | music-containers | Work | Source Variants | Post kernel | Implemented (`src/containers/`) | B, F | Yes | Structural | Invariant
+Arrangement | Entity | Adapted version of a Work | music-containers | Work | — | Post kernel | Implemented (`src/containers/`) | B, F | Yes | Structural | Invariant
+Revision | Entity | Version of a Work/Edition | music-containers | Work/Edition, Version | — | Post kernel | Implemented (`src/containers/`) | A, B | Yes | Structural | Invariant
+SourceVariant | Value | Variant reading / editorial disagreement | music-containers | Source | Scholarly Annotation | Post kernel | Implemented (minimal `{source_id, descriptor}` guess at the deferred schema) | B | Partial ("shall eventually support" — deferred normative) | Reference Concept (deferred) | TBD
 ScholarlyAnnotation | Entity | Claim/target/author/citation/framework/evidence/uncertainty/status | music-interpretation | Annotation base | Analysis, Provenance | Post kernel | Not Started | I, K | Partial ("should support" — soft) | Reference Concept | TBD
 
 ## Observability / Reproducibility (cross-cutting)

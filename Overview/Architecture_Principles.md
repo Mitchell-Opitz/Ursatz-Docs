@@ -1,6 +1,6 @@
 # Architecture Principles
 
-**Last verified against repo state:** 2026-09-13. This document is conceptually stable;
+**Last verified against repo state:** 2026-10-05. This document is conceptually stable;
 it describes design law and layer shape, not current build status. Status lives in each
 repo's `Status.md`.
 
@@ -57,6 +57,8 @@ L6  Context / Semantics   (Interpretation, Relationship — the claim mechanism)
 L7  Theory                (Framework, Rule, Constraint, Preference)
 L8  Analysis / Generation / Transformation
 L9  I/O / Applications
+
+Extensions: frameworks/<name>/  Theory Frameworks built on L7, outside the numbered stack
 ```
 
 Cross-cutting modules attach to any layer; their dependency direction is governed by their
@@ -68,6 +70,15 @@ by L0–L8).
 **Dependency rule:** a module in layer N may depend only on modules in layers 0..N, plus any
 cross-cutting module it's permitted to use, never upward. Full prohibitions list and the
 Registry-first enforcement rule: `Ursatz-Library/Dependency_Layer_Specification.md`.
+
+**Three placement rules added 2026-10-05** (full text in
+`Ursatz-Library/Dependency_Layer_Specification.md`):
+- **Frameworks** live in `frameworks/<name>/`, depend on L0 to L6 plus L7's Framework/Rule/
+  Constraint, and may depend on another framework only when the edge is in the Registry.
+- **Vocabulary enums** (plain names like `CadenceType`) may live in L6 semantics when two or
+  more frameworks share them; otherwise they belong in the framework.
+- **Notation values** (`Clef`, `KeySignature`, `TimeSignature`, `NoteValue`, ...) are accepted
+  at L2 as theory-free values; layout and rendering stay in `music-notation` (L9).
 
 ## The durable claim pattern (established 2026-09-09, do not re-litigate per branch)
 

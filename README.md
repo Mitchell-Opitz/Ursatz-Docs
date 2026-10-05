@@ -17,9 +17,11 @@ later.
 | The 25 non-negotiable design laws + layer model, at a glance | `Overview/Architecture_Principles.md` |
 | Whether the *library* has built X | `Ursatz-Library/Status.md` |
 | A known bug/limitation in the library | `Ursatz-Library/Known_Gaps.md` |
+| Which theory frameworks exist and what each depends on | `Ursatz-Library/Registry/Registry_Theory_Analysis.md` (catalog also in the Ursatz repo's `frameworks/README.md`) |
 | The exact data model for a specific concept (e.g. "what is a Relationship") | `Ursatz-Library/Registry/*.md` (split by layer — see that folder's own index) |
 | The full architectural spec behind a design decision | `Ursatz-Library/*_Specification.md` |
 | Whether the *CLI* or *GUI* has built X, or a known bug in either | `Ursatz-Analyzer/Status.md` / `Known_Gaps.md`, `Ursatz-GUI/Status.md` / `Known_Gaps.md` |
+| The planned branches and commits for each code repo | `Roadmaps/` |
 | When/why something changed direction, or when a doc was last checked against code | `Reconciliation_Log.md` |
 | Old superseded versions of any doc | `Archive/<date>/` |
 
@@ -33,6 +35,7 @@ Ursatz-Library/         everything about the kernel: current status, known gaps,
 Ursatz-Analyzer/        current status + known gaps for the CLI consumer app.
 Ursatz-GUI/             current status + known gaps for the GUI consumer app.
 Ursatz-Composer/        placeholder — fill in using the same template once this repo exists.
+Roadmaps/               planned work per code repo, by branch and commit (not status).
 Reconciliation_Log.md   append-only dated log of every verification pass and every
                         purpose/direction change. Never rewritten, only appended to.
 Archive/                superseded doc versions, kept for history. Never edited.

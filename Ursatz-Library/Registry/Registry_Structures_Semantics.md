@@ -1,6 +1,6 @@
 # Registry — Structures, Semantics, Relationships, Provenance (L5–L6)
 
-**Last verified against repo state:** 2026-09-14 (self-audit pass, no repo changes since 2026-09-13). Columns: Name | Category | Purpose |
+**Last verified against repo state:** 2026-10-05 (Ursatz `090695c`, PR #97). Columns: Name | Category | Purpose |
 Module | Depends On | Depended On By | Phase | Status | Spec Ref | Normative? | Contract
 Type | Test Spec Ref. See `Registry_Index.md` for the full-Registry split and standing
 verification warning.
@@ -24,14 +24,37 @@ why this was briefly (and wrongly) changed, then reverted.
 
 ## Semantic Layer
 
-Interval | Value | Directed/undirected/diatonic/chromatic distance | music-semantics | PitchIdentity/PitchClass pair | Sonority, Contour, Analysis | 3 | Not Started | D | Yes | Value Contract | Property-Based
+Interval | Value | Directed/undirected/diatonic/chromatic distance | music-semantics | PitchIdentity/PitchClass pair | Sonority, Contour, Analysis | 3 | Implemented (`src/semantics/interval.h`): semitone distance between PitchIdentity tokens, caller-supplied (computes nothing itself). Written-letter size is the separate GenericInterval (L2) | D | Yes | Value Contract | Property-Based
 Sonority | Value | Selected collection of simultaneous pitch-bearing events | music-semantics | Events, selection semantics | Chord Interpretation | 3 | Implemented. `SonorityBuilder` (PR #45) derives real Sonority objects from raw NoteEvents via attack-based beat-grid grouping (fixed quarter-note grid, a stated v1 default, not adaptive) | D | Yes | Value Contract | Golden
 Chord | Interpretation | Framework-specific interpretation of a Sonority | music-interpretation | Sonority, FrameworkReference, Context | Harmonic Analysis | 8 | Implemented (minimal); thin wrapper plus real production via Chord Identification, including 4 seventh-chord qualities (dominant7, major7, minor7, half-diminished7; fully-diminished7 deliberately excluded, requires harmonic minor, out of scope) alongside the original 7 diatonic triads, quality-keyed (root-relative interval set) not degree-keyed. EntityID uniqueness fix applied (PR #36, derived from sonority_target_id) | I, L | Yes | Behavioral Contract | Theory
 Key | Interpretation | Contextual claim, not intrinsic to notes | music-interpretation | Context, FrameworkReference | Scale Degree, Roman Numeral Analysis | 8 | Implemented (minimal); thin wrapper plus real production via Key Estimation, major/natural-minor only | I, L | Yes | Behavioral Contract | Theory
-Scale | Value | Ordered pitch collection under declared semantics | music-semantics | PitchClass, TuningSystem, Framework | Scale Degree, Scale Analysis | 3 | Not Started | D | No (attributes listed as "possible") | Reference Concept | TBD
-ScaleDegree | Interpretation | Contextual mapping (pitch → degree) | music-interpretation | Scale, Context, FrameworkReference | Roman Numeral Analysis | 3/8 | Not Started | D, I | Yes | Structural | Theory
+Scale | Value | Ordered pitch collection under declared semantics | music-semantics | PitchClass, TuningSystem, Framework | Scale Degree, Scale Analysis | 3 | Implemented (`src/semantics/scale.h`, references a TuningSystem). Scale vocabulary (major, minor, modes) lives in `frameworks/standard-tonality` | D | No (attributes listed as "possible") | Reference Concept | TBD
+ScaleDegree | Interpretation | Contextual mapping (pitch → degree) | music-interpretation | Scale, Context, FrameworkReference | Roman Numeral Analysis | 3/8 | Implemented (`src/interpretation/scale_degree.h`, requires a FrameworkReference); `standard_tonality_build_scale_degree` builds a populated one | D, I | Yes | Structural | Theory
 Contour | Value | Relative pitch change (up/down/same) | music-semantics | PitchIdentity sequence | Motif/Similarity Analysis | 3 | Implemented. Direction is caller-supplied, not computed from PitchIdentity (deliberate, since PitchIdentity is opaque, same constraint as Voice Leading). This makes Contour-based matching transposition-invariant by construction, which Motif Detection relies on for v1's exact-repetition/transposition-only scope | D | No (descriptive examples) | Reference Concept | TBD
 RhythmicPattern | Value | Independently representable rhythm sequence | music-semantics | Duration/TimeSpan sequence | Pattern Matching, Motif Detection | 3 | Implemented (fully constructible/queryable from rhythm alone, no pitch header dependency) | C, D | Yes | Structural | Unit
+Texture | Interpretation | Framework-relative claim about a passage's texture (e.g. homorhythm) | music-interpretation | FrameworkReference, passage EntityID | standard-texture | 8 | Implemented (PR #64, `src/interpretation/texture.h`); requires a FrameworkReference | I | No | Structural | Theory
+
+### Vocabulary enums (L6, `src/semantics/`)
+
+Plain enums naming theory concepts. No EntityID, no data, no framework claim; meaning is the
+using framework's convention. Admission rule (2026-10-05): a new enum enters the kernel only
+when two or more frameworks need it. Existing single-framework enums stay until their framework
+next changes, then move into it. Enums with no consumer are removed.
+
+Enum | Used by | PR | Status
+VoicePart | standard-voicing, standard-harmony, high-baroque-fugue | #65 | Implemented (shared)
+BeatStrength | standard-counterpoint, standard-harmony, galant-schemas | #68 | Implemented (shared)
+NonChordTone | standard-counterpoint, standard-harmony | #69-71, #83 | Implemented (shared)
+ImitationAnswer | sixteenth-century-style, high-baroque-fugue | #74 | Implemented (shared)
+CadenceType | standard-harmony, standard-form | #80 | Implemented (shared). Designated owner of cadence vocabulary; see Known_Gaps for the analysis-layer strings that predate it
+MotionType, CounterpointSpecies | standard-counterpoint | #66-67 | Implemented (single framework; move on next change)
+FugueRole | high-baroque-fugue | #75 | Implemented (single framework; move on next change)
+OstinatoType, ImitativeRole | baroque-ground-bass | #76 | Implemented (single framework; move on next change)
+SchemaFunction | galant-schemas | #77 | Implemented (single framework; move on next change)
+ScaleDirection, SequenceKind | scale-harmonization | #79 | Implemented (single framework; move on next change)
+HarmonicFunction, SeventhResolution, PhraseModelLabel, SixFourType, AppliedChordKind, ModulationKind, KeyChangeExtent | standard-harmony | #80-94 | Implemented (single framework; move on next change)
+FormLevel, MotiveKind, PhraseRole, PhraseBeginning, PhraseEnding, IdeaLabel, SubphraseRole, ContinuationTrait, PhraseLevelForm | standard-form | #95-97 | Implemented (single framework; move on next change)
+SubjectPart, SubjectCharacter, SchemaSense | none (tests only) | #75, #78 | Implemented, no consumer. Slated for removal
 
 ## Relationship Model
 

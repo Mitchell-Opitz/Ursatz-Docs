@@ -1,6 +1,6 @@
 # Test Specification (Deliverable U)
 
-**Last verified against repo state:** 2026-09-14 (self-audit pass, no repo changes since 2026-09-13). This is a Phase-1 kernel spec describing
+**Last verified against repo state:** 2026-10-05 (Ursatz `090695c`, PR #97). This is a Phase-1 kernel spec describing
 required test categories and their treatment; unchanged in substance since. The Framework
 Stage session extended coverage (see `Status.md`'s note on architecture-guard tests) without
 changing this document's contract.
@@ -228,16 +228,17 @@ no L1–L4 object's module imports the module of anything it only holds by opaqu
   reference — the reference-only dependency rule made into a CI check
 ```
 
-**Current coverage (verified 2026-09-13):** every analyzer added in the Framework Stage
-session shipped with its own architecture guard test; full suite is well over 150 tests and
-growing with each PR through #46.
+**Current coverage (verified 2026-10-05):** every kernel module and every framework has its
+own architecture guard test. The root build runs 220 kernel tests in CI. The 248 framework
+tests, including 17 framework guards, do not run from the root build or CI yet (see
+`Known_Gaps.md`).
 
 ## Deferred categories
 
 | Category | Deferred to | Why not testable yet |
 |---|---|---|
 | Context | Future Context spec | Context composition not yet specified |
-| Theory | Future Theory/Rule/Constraint spec | Constraint/Preference remain deliberate stubs |
+| Theory | Future Theory/Rule/Constraint spec | Partially addressed: each framework has per-rule unit tests (248 total), but they run outside CI, and `constraint_evaluate`/`preference_rank` remain deliberate stubs |
 | Analysis Regression | — | **Partially addressed**: analyzer-level unit/regression tests exist per analyzer, but the full-corpus verification pass (`framework-v1-reference-set`, all 5 pieces, output checked not just registration) is still the open item — see `Overview/Master_Roadmap.md` |
 | Generation Validation | Generation phase | `Intent`/`ConstraintExtraction`/`Candidate`/etc. exist as real base types (`src/generation/`), but no `Generator`/`IntentCompiler` orchestration exists to produce output worth regression-testing — see `Registry/Registry_Theory_Analysis.md` |
 | Corpus Regression | — | `CorpusRegression` test exists but verifies registration only, not analysis output |
@@ -249,7 +250,7 @@ growing with each PR through #46.
 
 All seven fully-treated categories (Invariant, Property-Based, Serialization/Round-Trip,
 Provenance, Transformation, Relationship, Canonical Equality) plus Architecture tests are
-specified for the Phase-1 slice and exercised in practice by the full test suite (150+ tests
-as of PR #46). Still blocked on: a formal Relationship spec, a formal Provenance record-shape
+specified for the Phase-1 slice and exercised in practice by the full test suite (220 kernel tests
+as of PR #97). Still blocked on: a formal Relationship spec, a formal Provenance record-shape
 spec, a formal Transformation Architecture spec, and a formal wire-format spec, all
 implemented in code ahead of their owning written spec, a disclosed gap (see `Status.md`).

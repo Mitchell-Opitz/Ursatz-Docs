@@ -1,6 +1,6 @@
 # Ursatz-Composer — Status
 
-**Last verified against repo state:** N/A — this repo does not exist yet.
+**Last verified against repo state:** 2026-10-05. This repo does not exist yet.
 
 ## Purpose (planned)
 
@@ -13,13 +13,18 @@ style, generate the piece." Motif-up or form-down, either direction. Will consum
 
 None. No repository exists.
 
-## Gating dependencies (must be true before this repo starts)
+## Gating dependencies
 
-1. Framework v1 verification actually completes (see `Ursatz-Library/Known_Gaps.md` and
-   `Overview/Master_Roadmap.md`'s Phase 2.5 section). This is not yet done.
+Revised 2026-10-05: rule-checked sketching (phases C1 to C3 of
+`Roadmaps/Ursatz-Composer_Roadmap.md`) may start once Ursatz L5.1 (real constraint
+evaluation), L5.4 (Generator interface) and L5.6 (MIDI renderer) merge. The items below gate
+style learning and self-critique (C5, C8), not the repo's creation.
+
+1. Framework v1 verification actually completes, which in practice needs the perception slice
+   (`Overview/Master_Roadmap.md`, Phases 2.5 and 2.7). Not yet done.
 2. A real ranking/preference layer exists. `Constraint`/`Preference` are currently
    deliberate kernel stubs (see `Ursatz-Library/Registry/Registry_Theory_Analysis.md`).
-3. `StatisticalModel`/`StyleModel` become real, not stubbed.
+3. `StatisticalModel`/`StyleModel` become real. Both exist as shapes only (no fitting).
 4. A Generator-facing query layer (PatternMatching/SimilarityModel/SearchResult). Analysis
    output is queryable-by-construction already, but nothing queries it yet.
 

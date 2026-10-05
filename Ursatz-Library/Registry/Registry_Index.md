@@ -1,6 +1,6 @@
 # System Registry Index
 
-**Last verified against repo state:** 2026-09-14 (self-audit pass, no repo changes since 2026-09-13). The Registry is the architectural
+**Last verified against repo state:** 2026-10-05 (Ursatz `090695c`, PR #97). The Registry is the architectural
 authority: every inter-module dependency must be represented here before implementation
 (see `Dependency_Layer_Specification.md`'s Registry-first rule). Full status narrative for
 what's built lives in `Status.md` / `Known_Gaps.md`; this Registry is the durable data-model
@@ -14,8 +14,8 @@ Status | Spec Ref | Normative? | Contract Type | Test Spec Ref
 | File | Covers |
 |---|---|
 | `Registry_Foundations.md` | Identity/Versioning, Core Reference Types, Core/Value Objects, Temporal, Pitch, Events, Containers, Equality/Canonicalization, Canonical IR/Serialization/Persistence |
-| `Registry_Structures_Semantics.md` | Structures/Occurrences, Semantic Layer, Relationship Model, Provenance |
-| `Registry_Theory_Analysis.md` | Theory Frameworks, Analysis, Generation |
+| `Registry_Structures_Semantics.md` | Structures/Occurrences, Semantic Layer (incl. vocabulary enums), Relationship Model, Provenance |
+| `Registry_Theory_Analysis.md` | Theory base types, Theory Frameworks (incl. the 17 framework instances and their dependency edges), Analysis, Generation |
 | `Registry_IO_Corpus_CrossCutting.md` | Query, Notation/Score, World/Source, I/O Adapters, Corpus, Plugin/Security, Validation, Testing, Work/Edition Model, Observability/Reproducibility, Performance/Recording, Transformation |
 
 **Standing warning (earned the hard way, see `Reconciliation_Log.md`).** Treat any "Not

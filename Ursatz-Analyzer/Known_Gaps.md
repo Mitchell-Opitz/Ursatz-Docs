@@ -1,10 +1,8 @@
 # Ursatz-Analyzer — Known Gaps
 
-**Last verified against repo state:** 2026-09-14, commit `<pending>` (PR #5, key-detection
-fixes). Items below re-checked against this commit; changes from PR #5 noted inline.
+**Last verified against repo state:** 2026-10-05, `main` at `718c86a` (PR #5). Items below
+re-checked against this commit.
 
-- **README.md contains only the title** (`# Ursatz-Analyzer`), with no build/usage/dependency
-  docs in-repo. Everything about usage is inferred from `main.c` and CI.
 - **Silent label truncation.** `AnalysisReportEntry.chord_label`/`key_label`
   (`analysis_report.h`) and `KeyEstimate.label`/`ChordEstimate.label`
   (`chord_pipeline.h`/`key_pipeline.h`) are fixed `char[32]` buffers. `copy_label`
@@ -32,6 +30,6 @@ fixes). Items below re-checked against this commit; changes from PR #5 noted inl
   (`MIDI_IMPORT_ERR_UNSUPPORTED_DIVISION`).
 - **No installation/packaging, no versioned releases, no license file.**
 
-None of these are staleness. This repo's own development has been quiet (one narrow
-submodule bump since the last pass), and every item above was independently re-confirmed
-against current source at the commit noted above.
+None of these are staleness; every item above was re-confirmed against current source at the
+commit noted above. The README (rewritten 2026-10-05) now covers build, usage, pipeline, key
+estimation and these limits.

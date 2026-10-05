@@ -1,34 +1,59 @@
 # Registry — Theory Frameworks, Analysis, Generation (L7–L8)
 
-**Last verified against repo state:** 2026-09-14 (self-audit pass, no repo changes since 2026-09-13). Columns: Name | Category | Purpose |
+**Last verified against repo state:** 2026-10-05 (Ursatz `090695c`, PR #97). Columns: Name | Category | Purpose |
 Module | Depends On | Depended On By | Phase | Status | Spec Ref | Normative? | Contract
 Type | Test Spec Ref. See `Registry_Index.md` for the full-Registry split and standing
 verification warning.
 
 ## Theory / Rules base types
 
-Framework | Category (base type) | Interpretive system (theory) | music-theory | Canonical domain interfaces only | Rule, Constraint, Interpretation | 4/9 | Implemented (partial); real minimal instance is `frameworks/common-practice-minimal`, identifying 7 diatonic triads, 4 seventh-chord qualities, and major/natural-minor keys | L | Yes | Structural | Theory
-Rule | Category (base type) | Formal evaluative statement | music-rules | Framework, Scope | RuleEvaluation | 9 | Not Started | L | Yes | Structural | Theory
+Framework | Category (base type) | Interpretive system (theory) | music-theory | Canonical domain interfaces only | Rule, Constraint, Interpretation | 4/9 | Implemented. 17 framework extension modules under `frameworks/` (catalog: `frameworks/README.md` in the Ursatz repo). Only `common-practice-minimal` is used by the analyzers | L | Yes | Structural | Theory
+Rule | Category (base type) | Formal evaluative statement | music-rules | Framework, Scope | RuleEvaluation | 9 | Implemented (base type, `src/rules/rule.h`): identity + Framework + scope. Frameworks create one Rule per rule they check | L | Yes | Structural | Theory
 Constraint | Category (base type) | Restricts candidate states | music-rules | Framework, Scope | Generation, ConstraintSolver | 9 | Implemented (partial); `constraint_evaluate()` has real null-checking but is a documented placeholder always returning `CONSTRAINT_EVAL_NOT_IMPLEMENTED` | L | Yes | Structural | Theory, GenerationValidation
 Preference | Category (base type) | Ranks candidates without invalidating | music-rules | Framework | Candidate Evaluation | 9 | Implemented (partial); `preference_rank()` is a similarly documented stub | L | Yes | Structural | Theory
-Heuristic | Category (base type) | Strategy/estimate, non-authoritative | music-rules | — | Candidate Evaluation, Generation | 9 | Not Started | L | Yes | Structural | Theory
-Tendency | Category (base type) | Observed statistical behavior from corpus | music-theory | Corpus, StatisticalModel | Style Model | 9 | Not Started | L | Yes | Structural | CorpusRegression
+Heuristic | Category (base type) | Strategy/estimate, non-authoritative | music-rules | — | Candidate Evaluation, Generation | 9 | Implemented (base type, identity + label only, no evaluate API by design) | L | Yes | Structural | Theory
+Tendency | Category (base type) | Observed statistical behavior from corpus | music-theory | Corpus, StatisticalModel | Style Model | 9 | Implemented (shape only; corpus data accepted as an opaque pre-computed Value) | L | Yes | Structural | CorpusRegression
 Procedure | Category (base type) | Algorithmic method (analysis/generation) | music-analysis / music-generation | Inputs, Config, Version | Analyzer, Generator | 9 | Not Started | L | Yes | Interface Contract | Unit
-Evidence | Category (base type) | Structured basis for an assertion | music-interpretation | Observation/source data | Interpretation, RuleEvaluation | 4/6 | Not Started | J | Yes | Structural | Context, Theory
+Evidence | Category (base type) | Structured basis for an assertion | music-interpretation | Observation/source data | Interpretation, RuleEvaluation | 4/6 | Implemented (base type, `src/interpretation/evidence.h`); analyzers attach it to AnalysisResult; not persisted | J | Yes | Structural | Context, Theory
 
 ## Theory Frameworks (independent modules)
 
-First–Fifth Species Counterpoint | Framework | Independent framework module | music-theory (plugin) | Framework base, Rule, Constraint | Generation validation (counterpoint) | 10 | Not Started | L | Yes (explicit Phase 10 deliverable, kernel-isolation rule) | Behavioral Contract (Plugin) | Theory
-Common-Practice Harmony (Roman Numeral, Harmonic Function, Voice Leading, Cadence, Tonicization, Modulation) | Framework | Independent framework module | music-theory (plugin) | Framework base, Context, Interpretation | Harmonic Analysis | 11 | Not Started. Confirmed Voice Leading and Cadence Detection/Classification are built directly against `frameworks/common-practice-minimal` (Phase 8), NOT this separate Phase 11 plugin framework module. This full plugin module remains unbuilt; do not assume it exists just because Voice Leading/Cadence work does | L | Yes (explicit Phase 11 deliverable) | Behavioral Contract (Plugin) | Theory
-Schoenberg / Persichetti / Jazz Harmony / Neo-Riemannian / Schenkerian / Set Theory / Modal Theory / Microtonality / Contemporary Systems | Framework | Advanced, independently pluggable frameworks | music-theory (plugin) | Framework base | Analysis/Generation (opt-in) | 18 | Not Started | L | No (named as examples; explicitly optional/no kernel dependency) | Reference Concept (optional plugin) | TBD
+First–Fifth Species Counterpoint | Framework | Independent framework module | music-theory (plugin) | Framework base, Rule, Constraint | Generation validation (counterpoint) | 10 | Implemented as a rule library: `frameworks/standard-counterpoint` (PRs #66-73), species 1-5, cantus firmus rules, Huron tendencies, hard/soft bitmasks. Operates on caller-supplied lines (PitchSpelling sequences); not wired to analysis or generation | L | Yes (explicit Phase 10 deliverable, kernel-isolation rule) | Behavioral Contract (Plugin) | Theory
+Common-Practice Harmony (Roman Numeral, Harmonic Function, Voice Leading, Cadence, Tonicization, Modulation) | Framework | Independent framework module | music-theory (plugin) | Framework base, Context, Interpretation | Harmonic Analysis | 11 | Partial. Rule libraries built: `frameworks/standard-tonality` (Roman numerals, triads, sevenths, keys; PRs #57-63) and `frameworks/standard-harmony` (function, phrase model, cadences, six-fours, prolongation, tonicization, modulation; PRs #80-94). Both take caller-supplied chord data and return rule results. What is NOT built is the analyzer this row describes: nothing derives that chord data from NoteEvents, so the analysis pipeline still runs on `common-practice-minimal`. Voice leading between chords is not covered by any framework | L | Yes (explicit Phase 11 deliverable) | Behavioral Contract (Plugin) | Theory
+Schoenberg / Persichetti / Jazz Harmony / Neo-Riemannian / Schenkerian / Set Theory / Modal Theory / Microtonality / Contemporary Systems | Framework | Advanced, independently pluggable frameworks | music-theory (plugin) | Framework base | Analysis/Generation (opt-in) | 18 | Not Started for the listed examples. Style-period frameworks of the same tier exist: `sixteenth-century-style`, `high-baroque-fugue`, `baroque-ground-bass`, `galant-schemas`, `scale-harmonization` (PRs #74-79), all depending on standard-counterpoint | L | No (named as examples; explicitly optional/no kernel dependency) | Reference Concept (optional plugin) | TBD
+
+### Framework instances (`frameworks/`, Ursatz repo)
+
+All are rule libraries over caller-supplied plain data unless noted. Dependency ceiling for
+each: L0-L6, `theory/framework.h`, `rules/rule.h`, `rules/constraint.h`, plus the framework
+edges listed. Framework-to-framework edges are allowed when recorded here (2026-10-05).
+
+Framework | Covers | Framework dependencies | PRs | Status
+common-practice-minimal | 7 diatonic triads, 4 seventh qualities, major/natural-minor keys | — | pre-#49, #48 | Implemented; the only framework the analyzers use
+standard-notation | Staff, clefs, ledger lines, stems, accidentals, steps | — | #49-51 | Implemented
+standard-markings | Dynamics, articulation, tempo words, repeat/D.C./D.S. order | — | #52 | Implemented
+western-periods | Six stylistic periods | — | #52 | Implemented
+standard-rhythm | Note values, dots, ties, rests, tuplets | — | #53, #56 | Implemented
+standard-meter | Simple/compound meter, beaming, anacrusis, hypermeter, syncopation | — | #54-56 | Implemented
+standard-tonality | Scales, modes, solfege, keys, intervals, triads, sevenths, chord symbols, Roman numerals | — | #57-63 | Implemented; partly emits Interpretations (chord symbols, scale degrees)
+standard-texture | Texture categories | — | #64 | Implemented; emits Texture
+standard-voicing | Strict SATB voicing of one chord | — | #65 | Implemented
+standard-counterpoint | Species 1-5 | — | #66-73 | Implemented
+sixteenth-century-style | Palestrina-style imitative polyphony | standard-counterpoint | #74 | Implemented
+high-baroque-fugue | Fugal exposition | standard-counterpoint | #75 | Implemented
+baroque-ground-bass | Ground bass, chaconne, passacaglia | standard-counterpoint | #76 | Implemented
+galant-schemas | Galant schemas | standard-counterpoint | #77-78 | Implemented
+scale-harmonization | Rule of the octave, sequences | galant-schemas, standard-counterpoint | #79 | Implemented
+standard-harmony | Function, phrase model, cadences, six-fours, prolongation, tonicization, modulation | — | #80-94 | Implemented
+standard-form | Form levels, motives, sentence, period, hybrid forms | — | #95-97 | Implemented; phrase expansion on unmerged branch `feat/phrase-expansion`
 
 ## Analysis
 
 Analyzer (interface) | Interface | analyze(input, context, config) → AnalysisResult | music-analysis | Canonical IR, Context, Framework | Analysis pipeline | 8 | Implemented (generic contract every concrete analyzer below implements); always emits Interpretation+Evidence | I, L | Yes | Interface Contract | AnalysisRegression
-FeatureExtraction | Concept | Explicit derived features (interval, contour, density, etc.) | music-analysis | Canonical IR | Candidate Generation | 8 | Not Started | I | Yes | Structural | AnalysisRegression
-Interval Analysis | Procedure | Analyzer | music-analysis | Interval | Interpretation | 8 | Not Started | L | Yes (Phase 8 deliverable) | Behavioral Contract | AnalysisRegression
-Scale Analysis | Procedure | Analyzer | music-analysis | Scale | Interpretation | 8 | Not Started | L | Yes (Phase 8 deliverable) | Behavioral Contract | AnalysisRegression
-Chord Identification | Procedure | Analyzer | music-analysis | Sonority, Framework | Interpretation | 8 | Implemented (minimal); wired to common-practice-minimal, verified against real commercial MIDI (Pachelbel's Canon) for the original 7 triads, and also identifies 4 seventh-chord qualities. EntityID uniqueness fix applied (PR #36). Compiles into `frameworks/common-practice-minimal`, not `libursatz` itself. KNOWN GAP: chord-region exact-match rigidity extends to seventh-chord matching too, partially mitigated by real beat-grid Sonority construction (PR #45), not eliminated | L | Yes (Phase 8 deliverable) | Behavioral Contract | AnalysisRegression
+FeatureExtraction | Concept | Explicit derived features (interval, contour, density, etc.) | music-analysis | Canonical IR | Candidate Generation | 8 | Implemented (`src/analysis/feature_extraction.h`): explicit named features, each independently present or absent | I | Yes | Structural | AnalysisRegression
+Interval Analysis | Procedure | Analyzer | music-analysis | Interval | Interpretation | 8 | Implemented (caller supplies directed semitones per consecutive pair; builds Interval + Interpretation + Evidence) | L | Yes (Phase 8 deliverable) | Behavioral Contract | AnalysisRegression
+Scale Analysis | Procedure | Analyzer | music-analysis | Scale | Interpretation | 8 | Implemented (caller-supplied-data analyzer, `src/analysis/scale_analysis.h`) | L | Yes (Phase 8 deliverable) | Behavioral Contract | AnalysisRegression
+Chord Identification | Procedure | Analyzer | music-analysis | Sonority, Framework | Interpretation | 8 | Implemented (minimal); common-practice-minimal, 7 diatonic triads + 4 seventh qualities, EntityID uniqueness fix (PR #36), subset matching (PR #48: extra degrees ignored, first match wins, ties logged). Compiles into `frameworks/common-practice-minimal`, not `libursatz`. KNOWN GAP: two or more non-chord tones per beat still fail (Field 1: 61/394 beats matched); see Known_Gaps | L | Yes (Phase 8 deliverable) | Behavioral Contract | AnalysisRegression
 Key Estimation | Procedure | Analyzer | music-analysis | Sonority, Context, Framework | Interpretation | 8 | Implemented (minimal); same framework/verification as Chord Identification; major/natural-minor only, containment-matching fix applied for real-world data | L | Yes (Phase 8 deliverable) | Behavioral Contract | AnalysisRegression
 Voice Leading (analysis) | Procedure | Analyzer | music-analysis | NoteEvent sequences, Framework | Interpretation | 8/11 | Implemented (packaging-only); caller-supplied-classification packaging (motion/interval-perfection/bass_motion). Does NOT compute real values from pitch data itself; blocked on nothing consuming TuningSystem/PitchRealization yet (both types now exist, still unused). Real computation, if ever added, belongs in a consumer app, not the kernel | L | Yes (Phase 8/11 deliverable) | Behavioral Contract | AnalysisRegression
 Cadence Detection | Procedure | Analyzer | music-analysis | Harmonic context | Interpretation (targeting the L5 Cadence shell) | 8 | Implemented (generic caller-supplied-candidate packager), plus an optional Framework param threading real FrameworkReference into its output | L | Yes (Phase 8 deliverable) | Behavioral Contract | AnalysisRegression
@@ -58,13 +83,14 @@ ConflictDetection | Concept | Reports constraint conflicts explicitly | music-ge
 GenerationPlan | Entity | Structured plan feeding generators | music-generation | Intent, Constraints, Preferences | Generator | 12 | Implemented (base type); `src/generation/generation_plan.c` (72 lines) | M | Yes | Structural | GenerationValidation
 Generator (interface) | Interface | generate(plan) → CandidateSet | music-generation | GenerationPlan | ThemeGenerator, PhraseGenerator, etc. | 12 | Not Started (header `generator.h` only, no `.c` implementation). This is the actual orchestration gap: every input type below exists, nothing calls `generate()` | M | Yes | Interface Contract | GenerationValidation
 Candidate / CandidateSet | Entity | Proposed result pre-acceptance / a collection of them | music-generation / music-analysis | Material, Evaluations | Selection, CandidateEvaluator | 4/12 | Implemented (base type); `src/generation/candidate.c` (359 lines), including `candidate_create`, `candidate_set_create`, identity-equality functions, real validation | I, M | Yes | Structural | GenerationValidation
-CandidateEvaluator | Component | Evaluates candidates vs rules/constraints/prefs/models | music-generation | Rule, Constraint, Preference, StatisticalModel | Selection | 12 | Implemented (base type); `src/generation/candidate_evaluator.c` (138 lines). Real dependencies (`Rule`, `StatisticalModel`) don't exist yet, so it has nothing real to evaluate against outside tests | L | Yes | Behavioral Contract | GenerationValidation
+CandidateEvaluator | Component | Evaluates candidates vs rules/constraints/prefs/models | music-generation | Rule, Constraint, Preference, StatisticalModel | Selection | 12 | Implemented (base type); `src/generation/candidate_evaluator.c`. Rule and StatisticalModel exist as base types, but `constraint_evaluate`/`preference_rank` are still stubs, so nothing real is evaluated outside tests | L | Yes | Behavioral Contract | GenerationValidation
 GenerationRecord | Entity | Records seed, versions, config for reproducibility | music-generation | Provenance | Reproducibility Record | 12 | Implemented (base type); `src/generation/generation_record.c` (108 lines) | K, M | Yes | Structural | GenerationValidation
 Hierarchical Generators (ThemeGenerator, PhraseGenerator, BasicIdeaGenerator) | Component | Composable generation levels | music-generation | Generator interface | Section/Work-level generation | 13 | Not Started | M | Yes | Behavioral Contract | GenerationValidation
-StatisticalModel | Entity | ML/statistical output object (features, prob, training corpus, version) | music-theory / ML boundary | Corpus, training pipeline | Tendency, CandidateEvaluator | 9 | Not Started | L | Yes | Structural | CorpusRegression
+StatisticalModel | Entity | ML/statistical output object (features, prob, training corpus, version) | music-theory / ML boundary | Corpus, training pipeline | Tendency, CandidateEvaluator | 9 | Implemented (shape only: features, training-corpus label, version; no fitting). Cannot be promoted to a Rule | L | Yes | Structural | CorpusRegression
 
 **What this means for Ursatz-Composer's future scope** (`Overview/Apps_Roadmap.md` Phase 3):
 the base-type groundwork is further along than previously documented, but the actual
-generation *pipeline* (`Generator`/`IntentCompiler` orchestration, `Rule`/`StatisticalModel`
-inputs, a real ranking/preference layer) is still entirely unbuilt. Don't read the
+generation *pipeline* (`Generator`/`IntentCompiler` orchestration, real `constraint_evaluate`/
+`preference_rank`, a fitted StatisticalModel) is still entirely unbuilt. The framework rule
+libraries are the most likely future source of real constraints. Don't read the
 "Implemented (base type)" rows above as "generation works"; nothing produces music yet.

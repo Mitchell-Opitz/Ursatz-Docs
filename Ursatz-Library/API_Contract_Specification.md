@@ -1,6 +1,6 @@
 # API / Contract Specification — Software Interaction Layer
 
-**Last verified against repo state:** 2026-09-14 (self-audit pass, no repo changes since 2026-09-13). This is a Phase-1 kernel spec, scoped to
+**Last verified against repo state:** 2026-10-05 (Ursatz `090695c`, PR #97). This is a Phase-1 kernel spec, scoped to
 the 10 Phase-1 objects + 3 reference types, unchanged by the Framework Stage session or
 since.
 

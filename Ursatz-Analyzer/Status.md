@@ -1,7 +1,7 @@
 # Ursatz-Analyzer — Status
 
-**Last verified against repo state:** 2026-09-14, commit `<pending>` (PR #5, key-detection
-fixes). See `Reconciliation_Log.md` for how this was checked.
+**Last verified against repo state:** 2026-10-05, `main` at `718c86a` (PR #5, key-detection
+fixes). No changes since. See `Reconciliation_Log.md` for how this was checked.
 
 ## Purpose
 
@@ -37,7 +37,7 @@ main.c
   └─ midi_pipeline (io/MIDIImporter wrapper) → ImportedNotes
        └─ analysis_pipeline (orchestrator)
             ├─ segmentation        (exact-onset-equality sonority grouping)
-            ├─ key_pipeline        (whole-piece Structure, tries 12 tonics)
+            ├─ key_pipeline        (whole piece: meta-event, closing/opening chord, 12 tonics)
             └─ chord_pipeline      (per group: pitch class → scale degree → chord)
                  └─ pitch_class_util (shared MIDI-note-number → pitch-class helper)
        └─ analysis_report / markdown_report / report_writer (output only)
@@ -49,8 +49,7 @@ and exits 1 with a usage/error message on bad input, allocation failure, or writ
 ## Current state relative to the ecosystem
 
 **This repo is genuinely low-churn and does not track the Ursatz library's Framework Stage
-work.** Only 4 PRs exist total; the most recent (#4) is a narrow submodule bump for a
-key-tolerance fix, not new functionality. It still only does key + chord identification, with
+work.** 5 PRs exist total; the most recent (#5) is the key-detection fix set described above. It still only does key + chord identification, with
 no Cadence/Motif/Period/Sentence/Form-level analysis existing here (that wiring only happened in
 Ursatz-GUI). This is not staleness to fix, but rather a reflection of the repo's actual, narrower
 scope as a demonstration CLI, distinct from Ursatz-GUI's broader consumer role. If this repo's
@@ -59,9 +58,11 @@ purpose change to record here and in `Overview/Master_Roadmap.md`, not a "catch-
 
 ## Build & test
 
-CMake ≥ 3.20, C11 compiler, CTest. `external/ursatz` submodule (pinned commit
-`610e3c4...`), with no other third-party dependency. Two test executables
-(`test_analysis_pipeline`, `test_report_output`) are registered with CTest.
+CMake ≥ 3.20, C11 compiler, CTest, SQLite3 (through Ursatz). `external/ursatz` submodule
+pinned at `8a0c9b0` (Ursatz PR #47), 50 Ursatz PRs behind `main`; it lacks PR #48's subset
+chord matching. Three test executables are registered with CTest: `test_analysis_pipeline`,
+`test_report_output`, and `test_corpus_key_estimation` (reported key of six reference pieces).
+CI checks out the submodule with a `URSATZ_SUBMODULE_TOKEN` secret.
 
 ## What depends on this repo
 

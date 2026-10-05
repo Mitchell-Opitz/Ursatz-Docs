@@ -1,6 +1,6 @@
 # Music Apps Business Roadmap (Post-Ursatz)
 
-**Last verified against repo state:** 2026-09-13.
+**Last verified against repo state:** 2026-10-05.
 
 **Scope note:** this document is product/market/phase sequencing; architecture belongs in
 `Ursatz-Library/`, current build state belongs in each repo's `Status.md`. This document
@@ -18,26 +18,20 @@ Narrow scope: pick one piece-type wedge (e.g. video game boss themes) and ship "
 what's happening in this piece and why," end-to-end, for a real user. Proves the theory
 engine produces genuine insight, not just data.
 
-**Depends on:** Ursatz L0–L8-Transform (done). All planned L8-Analysis analyzers now have
-real, tested implementations (Chord Identification incl. sevenths, Key Estimation, Voice
-Leading, Cadence Detection/Classification, Motif Detection, Phrase Segmentation/Boundary
-Detection, Period/Sentence/Form/Thematic Return Detection). No remaining technical blocker
-to standing up the pipeline.
+**Depends on:** Ursatz L0 to L8 (done) and the theory rule libraries (done, PRs #49 to #97:
+tonality, harmony, counterpoint, form, meter). The analyzers exist, and the rules to judge
+their output exist.
 
-**The actual remaining gap:** Framework v1 verification against the fixed 5-piece test
-corpus has still not been completed as a real pass; see `Overview/Master_Roadmap.md`'s
-Phase 2.5 section. Two of the bugs that surfaced during the one partial (Bach-only) check
-have since been fixed in code, but nothing has re-run the corpus to confirm, and 4 of 5
-pieces have never been checked at all. Until that happens, "the pipeline exists" and "the
-pipeline is verified correct" remain different, currently-conflated claims.
+**The actual remaining gap: perception.** Nothing yet turns imported notes into the labeled
+facts the rules need. Chord identification resolves only 61 of 394 beats of Field Nocturne
+No. 1, MIDI import ignores meter, and the rule libraries aren't connected to the analysis
+pipeline. Until that is fixed, Framework v1 corpus verification (4 of 5 pieces never
+checked) can't meaningfully pass. Plan: `Overview/Master_Roadmap.md`, Phase 2.7.
 
 **Known gaps, not blockers (detail in `Ursatz-Library/Known_Gaps.md`):**
-- Sonority construction now uses a real beat-grid/attack-based builder (this has changed
-  since the original "exact-match rigidity" framing), but it's still a fixed quarter-note
-  grid, not adaptive to texture or tempo.
-- Voice Leading, Cadence Classification's PAC/IAC distinction, and real interval/motion
-  computation are all still blocked on nothing actually consuming `TuningSystem`/
-  `PitchRealization` yet, even though those types now exist in the kernel.
+- PAC vs. IAC, voice leading and motif detection still take caller-supplied data; the
+  numeric pitch path (`PitchNumericValue`) exists but no analyzer derives soprano or bass
+  lines from it yet.
 - No piece-type wedge (e.g. "video game boss themes") has been selected or scoped yet; this
   phase's narrow-scope framing is still aspirational.
 
@@ -69,8 +63,10 @@ This is the point where composing becomes possible, opening new tracks, YouTube 
 sheet music sales. Biggest payoff, longest runway, hardest technical bar.
 
 **Depends on:** Phases 1–2 working, including real Framework v1 verification (not yet done),
-and a Theory Framework and StyleModel/StatisticalModel that are real, not stubbed (`Constraint`/
-`Preference` remain deliberate kernel stubs; no `StatisticalModel`/`StyleModel` exists yet).
+and a ranking layer that is real, not stubbed: `Constraint`/`Preference` evaluation remains a
+deliberate kernel stub, and `StatisticalModel`/`StyleModel` exist as shapes only, with no
+fitting. The framework rule libraries are the natural source of real constraints once they
+are connected.
 A Generator-facing query layer (PatternMatching/SimilarityModel/SearchResult, L9,
 music-query) does not exist yet; analysis output is queryable-by-construction (structured
 Interpretation claims, real Relationship predicates), but nothing queries it yet.

@@ -1,7 +1,7 @@
 # Ursatz-GUI — Status
 
-**Last verified against repo state:** 2026-09-14, commit `<pending>` (PR #27, key-detection
-port). See `Reconciliation_Log.md` for how this was checked.
+**Last verified against repo state:** 2026-10-05, `main` at `cf87ca3` (PR #27, key-detection
+port). No changes since. See `Reconciliation_Log.md` for how this was checked.
 
 ## Purpose
 
@@ -54,7 +54,7 @@ ursatz-gui-owned SQLite tables alongside Ursatz's own per-piece database,
 `RelationshipRepository`; see `Ursatz-Library/Known_Gaps.md`).
 
 **Key estimation, as of PR #27, matches Ursatz-Analyzer's PR #5 behavior** (the fix was
-ported directly, no new bugs this time): `estimate_and_store_global_key`'s own copy of
+ported directly): `estimate_and_store_global_key`'s own copy of
 `estimate_global_key` (`analysis_service.c`, explicitly commented as a port of
 Ursatz-Analyzer's `key_pipeline.c`) now tries the MIDI key-signature meta-event first, falls
 back to the closing-chord-first/opening-chord-second chord-based check, then falls back to the
@@ -77,10 +77,10 @@ port.
 ## Build & test
 
 CMake, C11 compiler, civetweb v1.16 (via `FetchContent`), sqlite3 (transitively via Ursatz).
-`external/ursatz` submodule, pin not yet re-verified against Ursatz's PR #47 (key-signature
-scanner) tip since this PR ported the fix directly into `analysis_service.c` rather than
-consuming it via the submodule — confirm/update the pinned commit on the next reconciliation
-pass. There is no Node/JS build tooling; the frontend is hand-written static HTML/CSS/JS plus a
+`external/ursatz` submodule pinned at `8a0c9b0` (Ursatz PR #47). That is 50 Ursatz PRs behind
+`main`: it lacks PR #48 (subset chord matching) and all 16 frameworks from PRs #49 to #97.
+Bumping is low risk (no API the GUI uses changed) but changes chord output; it is planned as
+part of Phase 2.7 step 6 (`Overview/Master_Roadmap.md`). There is no Node/JS build tooling; the frontend is hand-written static HTML/CSS/JS plus a
 vendored OSMD UMD build.
 
 ## What depends on this repo

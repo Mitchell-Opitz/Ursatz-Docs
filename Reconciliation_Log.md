@@ -318,3 +318,105 @@ theoretical; verification header updated to PR #48 (commit hash pending). Noted 
 `test_framework_v1_corpus_subset_match_report` test is informational only (only Field 1's key
 is independently verified; other 4 pieces run under a placeholder tonic), not a correctness
 gate.
+
+## 2026-10-05: Full reconciliation after the framework build-out (Ursatz PRs #49 to #97)
+
+**What triggered this:** between 2026-10-02 and 10-04, 49 Ursatz PRs translated most of Open
+Music Theory into 16 new framework rule libraries plus 48 new kernel headers, without
+Registry-first review and without doc updates. The owner asked for an audit, then for
+architect decisions and a full doc update across all four repos.
+
+**Method:** read every doc here against all three code repos. Built Ursatz at `090695c` and
+ran all tests: 220/220 kernel tests pass with zero warnings. The 248 framework tests were run
+through a wrapper because the root build skips them: 247/248 pass. Evidence is archived in
+`Archive/20261005/Audit/`.
+
+**Findings:**
+- **Ursatz:** the new code is sound and follows the framework-extension shape; the kernel
+  never includes a framework (beyond the existing, documented `common-practice-minimal`
+  compile-in). But nothing went through the Registry; 6 framework-to-framework edges appeared;
+  32 theory-vocabulary enums went into `src/semantics/`, 24 used by one framework and 3 by
+  none; notation values went into L2. The frameworks are rule libraries over caller-supplied
+  data and are not connected to analysis or either app.
+- **Framework tests never run in CI** (a pattern predating PR #49), which hid a failing
+  `architecture_common_practice_minimal` guard since 2026-09-09.
+- **Pre-existing doc errors, larger than any before:** about 35 kernel types implemented on
+  2026-09-04 to 09-06 were documented as "Not Started" (Context, Interval, Scale,
+  ScaleDegree, Evidence, Observation, Hypothesis, Assertion, Rule, RuleEvaluation, Heuristic,
+  Tendency, StatisticalModel, StyleModel, Entity/Value/Occurrence, most L3 events, most L4
+  containers, FeatureExtraction, Interval Analysis, Scale Analysis, PitchNumericValue,
+  WrittenPitch, SoundingPitch). Same failure mode as the 2026-09-14 Generation miss: checking
+  headline types and not the rest of the directory.
+- **Ursatz-GUI / Ursatz-Analyzer:** no code changes since 2026-09-13. Fixed small doc errors
+  (pending commit hashes, wrong Analyzer submodule hash `610e3c4`, PR and test counts, the
+  Analyzer README no longer title-only and partly wrong about key-fallback order and flat
+  spelling).
+
+**Architect decisions (2026-10-05):**
+1. **No restart, no pivot.** The architecture holds. The rule libraries are the knowledge half
+   of the analyzer; the missing half is perception. Recorded as new Phase 2.7
+   (`Overview/Master_Roadmap.md`).
+2. **Registry-first stands.** Back-filled the Registry for everything in PRs #49 to #97.
+3. **Perception path rule (new):** no new framework or rule until analysis can produce its
+   inputs from imported music, or the same branch builds that path.
+4. **Framework extension modules** formalized: placement, ceiling, and framework-to-framework
+   edges allowed when recorded in the Registry. The 6 existing edges are accepted.
+5. **Vocabulary enums:** narrow exception to the kernel admission rule. Shared (2+ frameworks)
+   enums stay in L6; 24 single-framework enums move into their framework when it next
+   changes; 3 unused enums (`SubjectPart`, `SubjectCharacter`, `SchemaSense`) are to be
+   removed.
+6. **Notation values at L2** accepted (`Clef`, `StaffPosition`, `ClefResolution`,
+   `Accidental`, `KeySignature`, `TimeSignature`, `NoteValue`, `Tuplet`, `MetronomeMarking`,
+   plus `HistoricalPeriod`). Layout and rendering stay in `music-notation`.
+7. **Single owners for duplicated concepts:** cadence vocabulary = `CadenceType`; cadence
+   strength = `standard-harmony`; triad/seventh identification = `standard-tonality` (target;
+   `common-practice-minimal` stays until Chord ID moves); key signature = `KeySignature`.
+   Migrations are tracked in `Ursatz-Library/Known_Gaps.md`.
+8. **`feat/phrase-expansion`** (unmerged): held until Phase 2.7 starts, then merged or dropped
+   under rule 3.
+9. **First code work:** run framework tests in CI and fix the `common-practice-minimal`
+   allowlist.
+
+**What changed in docs (all four repos, branch `docs/reconcile-2026-10-05`):**
+- This repo: `Overview/*` (roadmap rewritten around Phase 2.7, three placement rules,
+  process rule 8), `Ursatz-Library/Status.md` and `Known_Gaps.md` rewritten, all five Registry
+  files updated (about 60 stale statuses corrected, new rows for every new type, a framework
+  catalog with edges, a vocabulary-enum table), `Dependency_Layer_Specification.md` (layer
+  table, three decision sections, enforcement as actually built),
+  `Technical_Design_Document.md` (phase table, vocabulary exception), the four Phase-1 specs
+  (headers, test counts), GUI/Analyzer/Composer status files, `README.md` index. The audit
+  folder moved to `Archive/20261005/Audit/`. The superseded "why verification waited on GUI
+  growth" paragraph was dropped from `Master_Roadmap.md`; it remains in the 2026-09-14 entry
+  above.
+- Ursatz: `README.md`, `docs/BUILDING.md`, `docs/ARCHITECTURE.md` rewritten; new
+  `frameworks/README.md` catalog (the per-framework paragraphs in `docs/modules/theory.md`
+  replaced by a pointer); stale notes fixed in `core`, `time`, `io`, `persistence`,
+  `structure`, `interpretation`, `l8-notes`, `analysis`, `corpus`, `semantics`, `containers`,
+  `transform` module docs; `common-practice-minimal/README.md` known-gap section; fixture
+  README.
+- Ursatz-Analyzer: `README.md` rewritten (build, usage, pipeline, key order, limits).
+- Ursatz-GUI: `README.md` stale sections fixed (analyzers run, key estimation copy, Evidence
+  wording, multi-voice highlighting caveat, out-of-scope list).
+
+## 2026-10-05: Per-repo roadmaps and Composer design
+
+**What happened:** added `Roadmaps/` with a branch-and-commit plan for Ursatz, Ursatz-Analyzer
+and Ursatz-Composer. These are plans, not status.
+
+**Decisions recorded there:**
+- **Ursatz-Analyzer purpose change (takes effect when its first roadmap branch merges):** from a
+  narrow key-and-chord CLI to the ecosystem's single analysis pipeline: a library the GUI and
+  Composer link (ending the GUI's copied key estimation), a composer-oriented Markdown report,
+  a versioned JSON analysis document, and a corpus mode producing style profiles.
+- **Composer design:** one "piece plan" tree (form, section, phrase, subphrase/idea, motive)
+  with time-aligned lanes (meter, key, harmony, bass, melody, inner voices), the same shape the
+  Analyzer writes. A single fill loop generates, rule-checks, scores, chooses and propagates;
+  top-down, bottom-up and middle-out differ only in where the given material sits and which
+  operators run. Concrete generators live in the Composer repo; the kernel keeps the
+  `Generator` interface and base types.
+- **Composer start gate revised:** rule-checked sketching (C1 to C3) may start once Ursatz
+  L5.1, L5.4 and L5.6 merge; style learning and self-critique still wait on perception and the
+  Analyzer. `Overview/Master_Roadmap.md` and `Ursatz-Composer/Status.md` updated.
+- **Pending owner decisions flagged in the roadmaps:** a statistical method for voice
+  separation if rules fall short (gate before Ursatz L2.7, as an Observation, never a Rule),
+  and an annotated-corpus accuracy harness (Ursatz L4.1).

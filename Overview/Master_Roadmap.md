@@ -1,7 +1,7 @@
 # Master Roadmap — Ursatz Ecosystem
 
-**Last verified against repo state:** 2026-09-13 (Ursatz @ PR #46, Ursatz-GUI @ PR #26,
-Ursatz-Analyzer @ PR #4). See `Reconciliation_Log.md` for how this was checked.
+**Last verified against repo state:** 2026-10-05 (Ursatz @ PR #97, Ursatz-GUI @ PR #27,
+Ursatz-Analyzer @ PR #5). See `Reconciliation_Log.md` for how this was checked.
 
 ## What this project is
 
@@ -11,7 +11,8 @@ Facts about music (notes, timing, structure) are kept strictly separate from
 explicit, named, swappable "Theory Framework," never assumed by the kernel.
 
 **Long-term goal:** analyze real music, then generate original music, encoding real
-music-theory knowledge as a rule/preference-based symbolic system, not ML.
+music-theory knowledge as a rule/preference-based symbolic system, not ML. The owner's
+personal goal behind it: a tool that helps them compose music of professional quality.
 
 **Repos:**
 - `Ursatz` — the library (theory-neutral kernel + pluggable frameworks). Detail:
@@ -24,22 +25,38 @@ music-theory knowledge as a rule/preference-based symbolic system, not ML.
 
 | Repo | Purpose | Current state | Depends on |
 |---|---|---|---|
-| Ursatz | Theory-neutral kernel + pluggable theory frameworks | L0–L8 implemented; L9 (io/persistence/corpus) partially implemented; MusicXML export added | — |
-| Ursatz-Analyzer | CLI: MIDI → Markdown key/chord report | Working end-to-end, low-churn, functionally frozen at key+chord (no Framework-stage analyzers wired in) | Ursatz |
-| Ursatz-GUI | Browser UI: upload, analyze, browse, view score | Library/Collections/Analysis views all live; all 7 Framework-stage analyzers wired in; score rendering + claim highlighting working | Ursatz |
-| Ursatz-Composer | Generative composition engine | Not started | Ursatz (Phase 3 gate: real Framework v1 verification, a ranking/preference layer) |
+| Ursatz | Theory-neutral kernel + pluggable theory frameworks | L0 to L8 implemented, L9 partial. 17 frameworks, 16 of them rule libraries translated from Open Music Theory (PRs #49 to #97), not yet connected to analysis | — |
+| Ursatz-Analyzer | CLI: MIDI → Markdown key/chord report | Working end-to-end, deliberately narrow (key + chord only). Submodule at Ursatz PR #47 | Ursatz |
+| Ursatz-GUI | Browser UI: upload, analyze, browse, view score | Library/Collections/Analysis views live; 7 Framework-stage analyzers wired in; score rendering + claim highlighting. Submodule at Ursatz PR #47 | Ursatz |
+| Ursatz-Composer | Generative composition engine | Not started | Ursatz (Phase 3 gate below) |
+
+## Where the project actually stands (2026-10-05)
+
+An analyzer for real music needs two halves:
+
+1. **Perception:** imported notes → musical facts ("beat 1 is a V7 in first inversion, the
+   soprano is on scale degree 2, it's a strong beat").
+2. **Knowledge:** musical facts → meaning ("V7 to I in root position with do on top is a PAC;
+   it ends the antecedent of a period").
+
+The knowledge half is now large: tonality, harmony, counterpoint, voicing, meter, rhythm,
+form and notation rules, all tested. The perception half is small: one framework
+(`common-practice-minimal`), a fixed quarter-note sonority grid, chord matching that fails on
+most real textures, and a MIDI importer that ignores meter. **Closing the perception gap is
+the next phase of work.** No new rule libraries until it is.
 
 ## Process discipline (why this has worked — keep following it)
 
 1. **Registry-first.** Nothing is implemented in Ursatz without first being recorded in the
-   System Registry (`Ursatz-Library/Registry/`), maintained separately from the repos. The
-   project owner is the checkpoint between architecture and implementation.
+   System Registry (`Ursatz-Library/Registry/`). The project owner is the checkpoint between
+   architecture and implementation. *Lapsed once, PRs #49 to #97 (2026-10-02 to 10-04);
+   back-filled 2026-10-05.*
 2. **One scoped branch per task**, never a whole phase at once.
 3. **Judgment calls get flagged before code is written**, and the architect reviews and
    approves first. This has caught real design issues early, including the Theory Framework
    circular-dependency split, keeping `constraint_evaluate` a kernel stub, the L5-vs-L6
-   placement question below, the phrase-segmentation naming collision, and the
-   Relationship-chain mechanism for Period/Sentence/Form.
+   placement question, the phrase-segmentation naming collision, and the Relationship-chain
+   mechanism for Period/Sentence/Form.
 4. **Root-cause fixes over symptom patches.** For example, the key-detection exact-match bug
    was fixed by generalizing existing chord-level tolerance to key-level, not patched around.
 5. **Disclosed scope cuts, not silent gaps.** Every "not built yet" is documented at the
@@ -47,14 +64,14 @@ music-theory knowledge as a rule/preference-based symbolic system, not ML.
 6. **Investigate before implementing, AND before deciding.** A mid-session architecture
    decision on 2026-09-09 (relocating Motif/Cadence/Theme/PhraseOccurrence from L5 to L6) was
    made without checking real repo state, was wrong, and had to be reverted; see
-   `Reconciliation_Log.md`. This is now standing practice, not a one-off.
-7. **Documentation is verified, not assumed.** The same "check real state before trusting a
-   status claim" discipline now applies to this docs repo itself; see
-   `Reconciliation_Log.md`'s 2026-09-13 entry. **Treat any status in this repo as unverified
-   until a dated log entry or a `Status.md` header confirms when it was last checked.**
-8. **Calibration reminder:** process quality and percent-of-vision-complete are different
-   numbers. Process has been consistently disciplined; overall completion is still a small
-   fraction of the long-term vision.
+   `Reconciliation_Log.md`.
+7. **Documentation is verified, not assumed.** Treat any status in this repo as unverified
+   until a dated log entry or a `Status.md` header confirms when it was last checked.
+8. **Perception path rule (new, 2026-10-05).** Don't start a new framework or rule until the
+   analysis layer can produce its inputs from imported music, or the same branch builds that
+   path. Knowledge without a way to reach it is shelf-ware.
+9. **Calibration reminder:** process quality and percent-of-vision-complete are different
+   numbers. Overall completion is still a small fraction of the long-term vision.
 
 ## Phase overview
 
@@ -63,38 +80,39 @@ music-theory knowledge as a rule/preference-based symbolic system, not ML.
 | 0 | Ursatz | Done |
 | 1 | Ursatz-Analyzer | Done |
 | 2 | Ursatz + Ursatz-GUI | Done |
-| 2.5 | Ursatz (Framework Stage: 7 new analyzers, seventh chords, real Relationship use) | Code complete. **Verification against the fixed 5-piece reference corpus is not complete** — see below. Two of the two known analysis-quality bugs surfaced during partial verification are now fixed in code (see `Ursatz-Library/Known_Gaps.md`), but the corpus hasn't been re-run to confirm, and 4 of 5 pieces (Clementi, Field No. 1, Field No. 5, Mozart) have never been checked at all. Chord identification's non-chord-tone handling (Problem B) got a subset-match stopgap (PR #48), but running it against Field 1 resolved only 61/394 beats to a triad — real chord-level corpus verification is still blocked on the deferred duration-weighted tie-break fix, now confirmed necessary rather than theoretical. |
-| 3 | Ursatz-Composer (new repo, not started) | Gated on Phase 2.5's verification actually completing, plus a ranking/preference layer that doesn't exist yet |
+| 2.5 | Ursatz (Framework Stage: analyzers, seventh chords, Relationship use) | Code complete. **Corpus verification not complete**: the 5-piece reference set has had only Bach checked by hand. Blocked in practice on perception quality: chord ID resolves only 61/394 beats of Field 1 |
+| 2.6 | Ursatz (framework rule libraries, PRs #49 to #97) | Done as rule libraries; not connected. Built ahead of plan and outside Registry-first; reconciled 2026-10-05 |
+| **2.7** | **Ursatz, then both apps (perception: MIDI → labeled musical facts)** | **Next.** See below |
+| 3 | Ursatz-Composer (new repo, not started) | Rule-checked sketching (Composer C1 to C3) may start once Ursatz L5.1, L5.4 and L5.6 merge; style learning and self-critique wait on 2.7 and the Analyzer. Plan: `Roadmaps/Ursatz-Composer_Roadmap.md` |
 
-**Phase 2.5's real exit criterion, still not met:** run the `framework-v1-reference-set`
-5-piece corpus through the full analysis pipeline and check the *output*, not just that the
-pieces are registered. `CorpusRegression` (Ursatz) verifies registration only. A manual GUI
-pass checked Bach only, and surfaced two analysis-quality bugs (chord-Interpretation
-non-uniqueness, thematic-return over-matching), both since fixed in code (PRs #36, #37) but
-**not re-verified against the corpus**; the other 4 pieces were never checked at all.
+## Next: Phase 2.7, the perception slice
 
-**Why this waited on Ursatz-GUI's growth, rather than being neglected:** the original way to
-inspect analyzer output was a flat text dump, every chord, every phrase, every cadence,
-hundreds of lines per piece. That format made real verification practically impossible; no
-one can reliably eyeball "is PAC actually happening at measure 12" out of a wall of text.
-Ursatz-GUI's Library/Analysis/Score-tab work (PRs #17–#21) wasn't a separate feature track
-competing with verification. It *was* building the verification instrument, since real
-notation rendering with claims highlighted on the actual notes they target is the only
-practical way to confirm analysis output is correct, not just present. That tooling only
-became real with PR #20/#21 (Score tab + note highlighting), which is why the full-corpus
-verification pass is still pending now rather than having happened earlier. It wasn't
-deferred, it was blocked on the thing that makes it checkable at all. Now that the tooling
-exists, running the other 4 pieces through it is a live, actionable next step, not a stalled
-one.
+Goal: one end-to-end path from a MIDI file to framework-checked harmony and cadences, verified
+on the 5-piece reference corpus in the GUI. In order, one scoped branch each:
+
+1. **Housekeeping.** Run framework tests in CI; fix the `common-practice-minimal` guard
+   allowlist. Decide `feat/phrase-expansion` (merge or drop).
+2. **Meter from MIDI.** MIDIImporter reads time-signature meta-events and produces
+   `TimeSignature`; measures and beat strength become real (via `standard-meter`).
+3. **Chord identification that survives real texture.** Weight candidate chords by duration
+   and beat strength, treating extra tones as `NonChordTone`s; adaptive sonority boundaries.
+4. **Roman numerals and function.** Feed identified chords into `standard-tonality` (Roman
+   numerals) and `standard-harmony` (function, cadences, phrase model), emitting
+   Interpretations per the claim pattern.
+5. **Soprano and bass lines.** Derive outer voices from the voice assignment, so PAC vs. IAC
+   and bass-line rules get real inputs.
+6. **Wire into the apps and verify.** Bump both submodules, surface the new claims in the GUI,
+   and run all 5 corpus pieces. This closes Phase 2.5's exit criterion too.
+
+Only after step 6 does new rule-library work resume, under rule 8 above.
+
+Branch-and-commit plans for all three code repos: `Roadmaps/` (Ursatz, Ursatz-Analyzer,
+Ursatz-Composer).
 
 ## Known ecosystem-wide blocker
 
-`TuningSystem`/`PitchRealization` (Ursatz kernel, `src/pitch/`) now exist as types but are
-used by nothing. Voice Leading, Cadence Classification's PAC/IAC distinction, and Motif
-Detection all still only operate on caller-supplied or Contour/RhythmicPattern-level
-(direction/duration-only) data, not real computed pitch values. This is a concrete blocker on
-analysis quality for real MIDI input, not a theoretical one. See
-`Ursatz-Library/Known_Gaps.md`.
+Analysis quality on real MIDI is limited by perception, not by theory coverage: see Phase 2.7
+and `Ursatz-Library/Known_Gaps.md` section 2.
 
 ## Governing principle for this document
 

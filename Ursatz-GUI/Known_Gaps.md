@@ -1,7 +1,6 @@
 # Ursatz-GUI — Known Gaps
 
-**Last verified against repo state:** 2026-09-14, commit `<pending>` (PR #27, key-detection
-port).
+**Last verified against repo state:** 2026-10-05, `main` at `cf87ca3` (PR #27).
 
 ## Confirmed still present
 
@@ -30,6 +29,12 @@ port).
 - **Relationship persistence is an application-owned stopgap**
   (`ursatz_gui_relationships` table), not a real Ursatz-side `RelationshipRepository`. Retire
   it in favor of a real repository once/if one is built; see `Ursatz-Library/Known_Gaps.md`.
+- **Score highlighting assumes document order matches.** `app.js` maps highlighted notes by
+  walking MusicXML and OSMD notes in the same order, since OSMD drops `xml:id`. The README
+  justified this as safe for single-voice export, but Ursatz's export can emit several voices
+  per measure since PR #43. Recheck on a multi-voice piece; switch to id-based matching if it
+  drifts.
+- **Submodule is 50 Ursatz PRs behind** (pinned at PR #47). See `Status.md`.
 - **Generator tool is explicitly out of scope**, with no route and no frontend affordance
   beyond whatever placeholder text exists. This is a disclosed, not-yet-planned gap, not a bug.
 - **No authentication, no native app packaging.** Both are explicitly out of scope per this

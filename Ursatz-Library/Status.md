@@ -1,7 +1,7 @@
 # Ursatz Library — Status
 
-**Last verified against repo state:** 2026-09-14, commit `<pending>` (PR #47, MIDI key-signature
-meta-event scanner). See `Reconciliation_Log.md` for how this was checked.
+**Last verified against repo state:** 2026-10-05, `main` at `090695c` (PR #97). See
+`Reconciliation_Log.md` for how this was checked.
 
 ## Purpose
 
@@ -12,88 +12,112 @@ produced under an explicit, named, swappable "Theory Framework," never assumed b
 kernel. It exists to be a substrate other tools build on, and it has no CLI or executable of its
 own. See `Overview/Architecture_Principles.md` for the governing design laws and layer model.
 
+## The one-paragraph picture
+
+The kernel (L0 to L9) is broadly built. On top of it sit 17 Theory Frameworks, most of them a
+translation of Open Music Theory into rule libraries (tonality, harmony, counterpoint, form,
+meter, notation). Those rule libraries take already-labeled data (scale degrees, inversions,
+soprano degree) and say whether rules hold. **The missing piece is perception**: turning
+imported notes into that labeled data. Today the analysis pipeline still runs only on the
+small `common-practice-minimal` framework, chord identification fails on most real
+multi-voice textures, and MIDI import ignores meter. Closing that gap is the next work; see
+`Overview/Master_Roadmap.md`.
+
 ## Current implementation, by layer
 
-**L0–L4 (Identity, Core, Time/Pitch, Events, Containers):** implemented for the Phase-1
-slice (EntityID, Duration, MusicalTime, TimeSpan, PitchIdentity, PitchSpelling, NoteEvent,
-Voice, and the three reference types). PitchSpelling is now persisted end-to-end (PR #38).
-Voice assignment is real, using greedy interval-graph coloring by timing, scoped per track for
-multi-track single-channel MIDI (PRs #43, #46); this is not a naive single-voice assumption.
-`TuningSystem`/`PitchRealization` types exist (`src/pitch/`) but nothing consumes them yet,
-see `Known_Gaps.md`.
+**L0 Identity, L1 Core:** implemented. EntityID, Version, VersionModel, SchemaVersion; Entity,
+Value, Occurrence base types; the five equality notions (identity, value and structural
+implemented; semantic and canonical as caller-supplied-function contracts); VoiceReference,
+RelationshipReference, ProvenanceReference, FrameworkReference.
 
-**L5 (Structures):** Motif, MotifOccurrence, Cadence, Theme, ThemeOccurrence,
-PhraseOccurrence, Figure all implemented as plain shells (id + EntityID-reference-list),
-with detection logic deliberately deferred to L8. This placement was questioned and re-confirmed
-correct during the 2026-09-09 session; see `Dependency_Layer_Specification.md`.
+**L2 Time / Pitch:** implemented.
+- Time: Duration, MusicalTime, TimeSpan, TimeInstant, TemporalAnchor (exact rationals);
+  TimeSignature, NoteValue, Tuplet, MetronomeMarking, HistoricalPeriod (PRs #52 to #56).
+  MeterMap and TempoMap not started.
+- Pitch: PitchIdentity (opaque), PitchSpelling, PitchClass, TuningSystem, PitchRealization,
+  PitchNumericValue (exact-rational numeric position under a TuningSystem), WrittenPitch,
+  SoundingPitch; Clef, StaffPosition, ClefResolution, Accidental, KeySignature,
+  GenericInterval (PRs #49 to #60). The notation values are accepted at L2 as theory-free
+  values (decision 2026-10-05, `Dependency_Layer_Specification.md`).
 
-**L6 (Context/Semantics):** Sonority is now built by a real `SonorityBuilder`
-(`src/semantics/sonority_builder.*`, PR #45), attack-based, with a fixed quarter-note beat grid
-(a stated v1 default, not adaptive; see `docs/modules/semantics.md` in the Ursatz repo).
-Contour and RhythmicPattern implemented. `Relationship` (full L6 edge type) is implemented
-and in real production use, with three predicates actually in play: `precedes` (Period
-antecedent→consequent, Form section order), `transformed_from` (Sentence
-statement→repetition→continuation), `resembles` (Form thematic return, Theme-to-Theme).
-`Interpretation` implemented as a thin wrapper, the sole output mechanism for every
-analyzer. Context, Interval, Scale, ScaleDegree not started.
+**L3 Events:** implemented. Event, NoteEvent, RestEvent, ControlEvent, Tie, Slur, Articulation,
+Dynamics, TempoMarking, StructuralMarker, Instrument, InstrumentCapability.
 
-**L7 (Theory):** `frameworks/common-practice-minimal` identifies 7 diatonic triads
-(degree-keyed) plus 4 seventh-chord qualities: dominant7, major7, minor7, half-diminished7
-(root-relative interval-set matching; fully-diminished7 is deliberately excluded, since it requires
-harmonic minor, which is out of scope), and major/natural-minor keys. As of PR #47, a
-standalone MIDI key-signature meta-event (`0xFF 0x59`) scanner exists as its own module,
-deliberately isolated from `midi_event_decoder_decode`/`midi_importer_import` (no shared
-call sites, ~20 lines of VLQ/event-skip logic duplicated rather than threading a new out-param
-through 9 existing call sites). It gives callers an authoritative tonic/mode when a file
-declares one, ahead of the candidate-tonic brute-force search below, but does not replace that
-search as the fallback path. `Constraint`/`Preference`
-remain deliberate, documented stubs (`constraint_evaluate()`/`preference_rank()` do real
-null-checking but always return a documented placeholder). `Rule`, `Heuristic`, `Tendency`,
-`StatisticalModel` not started.
+**L4 Containers:** implemented. Container, Voice (real interval-graph-coloring assignment for
+single-channel MIDI, PRs #43/#46), Layer, Staff, Part, Measure (MeterMap reference is a bare
+EntityID), Idea and Subphrase (PRs #95/#96), Phrase, Section, Movement, Work, Edition,
+Arrangement, Revision, SourceVariant.
 
-**L8 (Analysis, Generation, Transformation):**
-- **Transform:** all 11 concrete transforms implemented and tested (Transposition,
-  Inversion, Retrograde, RetrogradeInversion, Augmentation, Diminution, Fragmentation,
-  Expansion, Contraction, Displacement, Ornamentation).
-- **Analysis, all planned analyzers now implemented:** Chord Identification (incl.
-  sevenths), Key Estimation, Voice Leading (packaging-only, see `Known_Gaps.md`), Cadence
-  Detection + Classification (derives PAC/IAC/HC/Plagal/Deceptive from real chord
-  root-motion; PAC vs. IAC needs soprano-resolution data that doesn't exist anywhere, so it
-  reports "authentic (unclassified)" rather than guessing), Motif Detection
-  (Contour+RhythmicPattern sequence matching, exact repetition/transposition only), Phrase
-  Segmentation (pre-existing, untouched) + Phrase Boundary Detection (real is_boundary from
-  Cadence primary signal + Contour/RhythmicPattern discontinuity secondary), Period Detection
-  (first real `Relationship` use, `precedes`), Sentence Detection (chains two
-  `transformed_from` Relationships), Form Structure Detection + Thematic Return Detection
-  (structural PAC/IAC-only section boundaries; `resembles` for recurrence).
-- **Generation:** more built than it first appears. `src/generation/` has real,
-  non-stub implementations (~1,159 lines) of `Candidate`/`CandidateSet` (incl. identity
-  equality), `CandidateEvaluator`, `ConflictDetection` (incl. severity), `ConstraintExtraction`,
-  `GenerationPlan`, `GenerationRecord`, and `Intent`, each with genuine validation logic, not
-  placeholder bodies. What's genuinely **not started** is the top-level orchestration. The
-  `Generator` and `IntentCompiler` interfaces have headers but no `.c` implementation, so
-  nothing wires these real pieces into an actual generate-a-piece pipeline yet. This is the same pattern
-  as L5's Motif/Theme shells: real base types exist, but the algorithm consuming them doesn't.
+**L5 Structures:** Structure, Motif, MotifOccurrence, Cadence, Theme, ThemeOccurrence,
+PhraseOccurrence, Figure, all plain shells (id + EntityID-reference list). Detection lives in
+L8. Placement re-confirmed 2026-09-09; see `Dependency_Layer_Specification.md`.
 
-**L9 (I/O, Persistence, Corpus, Applications):**
+**L6 Context / Semantics:** implemented.
+- Context (composable via parent), but no analyzer builds one yet.
+- Semantics: Interval, Sonority, SonorityBuilder (attack-based, fixed quarter-note grid, PR
+  #45), Scale, Contour, RhythmicPattern; plus 32 vocabulary enums (`CadenceType`,
+  `VoicePart`, `NonChordTone`, ...) added for the frameworks (PRs #65 to #97). Rule for those
+  enums: `Dependency_Layer_Specification.md`.
+- Relationship and PredicateDefinition, in production use with `precedes`,
+  `transformed_from`, `resembles`.
+- Interpretation family: Interpretation (sole output of every analyzer), Assertion,
+  Observation, Hypothesis, Evidence, Uncertainty (3 of 8 kinds), Chord, Key, ScaleDegree,
+  Texture (PR #64).
+
+**L7 Theory:** Framework, Rule, RuleEvaluation, Constraint, Preference, Heuristic, Tendency,
+StatisticalModel, StyleModel all exist as base types. `constraint_evaluate()` and
+`preference_rank()` are deliberate stubs that always return a documented placeholder.
+Tendency, StatisticalModel and StyleModel are shape only (no fitting).
+
+**Framework extension modules (`frameworks/`, 17):**
+- `common-practice-minimal`: 7 diatonic triads, 4 seventh qualities, major/natural-minor keys.
+  **The only framework the analyzers use.** Triad/seventh matching is by subset (PR #48).
+- 16 added in PRs #49 to #97: standard-notation, standard-markings, western-periods,
+  standard-rhythm, standard-meter, standard-tonality, standard-texture, standard-voicing,
+  standard-counterpoint, sixteenth-century-style, high-baroque-fugue, baroque-ground-bass,
+  galant-schemas, scale-harmonization, standard-harmony, standard-form. Full catalog and
+  dependency edges: `Registry/Registry_Theory_Analysis.md`.
+- All 16 are **rule libraries over caller-supplied data**: each rule has a `*_rule_holds()`
+  predicate and frameworks report hard/soft violation bitmasks. Only parts of
+  standard-tonality and standard-texture build Interpretations. None is called by the
+  analysis layer or by either app yet.
+- The MIDI key-signature scanner (PR #47) gives callers an authoritative tonic/mode when a
+  file declares one; it does not yet produce the `KeySignature` value type.
+
+**L8 Analysis, Generation, Transformation:**
+- **Transform:** 12 concrete transforms, all implemented and tested (the original 11 plus
+  IntervallicManipulation, PR #95).
+- **Analysis:** FeatureExtraction plus 14 analyzers: Interval Analysis, Scale Analysis, Chord
+  Identification (triads + sevenths, subset match), Key Estimation, Voice Leading
+  (packaging-only), Cadence Detection + Classification (PAC/IAC/HC/plagal/deceptive from root
+  motion; PAC vs. IAC reported as "authentic (unclassified)" without soprano data), Motif
+  Detection (exact repetition/transposition), Phrase Segmentation, Phrase Boundary Detection,
+  Period, Sentence, Form Structure and Thematic Return Detection. Most take caller-computed
+  inputs; only Chord ID and Key Estimation call a framework.
+- **Generation:** real base types (Intent, ConstraintExtraction, ConflictDetection,
+  GenerationPlan, Candidate/CandidateSet, CandidateEvaluator, GenerationRecord). `Generator`
+  and `IntentCompiler` are headers only; nothing generates music.
+
+**L9 I/O, Persistence, Corpus:**
 - **I/O:** MIDIImporter (SMF 0/1, note-on/off only, tempo-independent whole-note-fraction
-  Duration units as of PR #39). **MusicXmlExport now implemented**
-  (`src/export/musicxml_export.*`, PRs #40–41), with single-part note/measure serialization and
-  `xml:id` on exported notes. MusicXML/MEI/ABC *import*, other renderers: not started.
-- **Persistence:** SQLite-backed storage for NoteEvent (incl. PitchSpelling), Uncertainty (3
-  of 8 kinds), Interpretation (opaque), thin Chord/Key wrappers. SQLite busy-timeout fix
-  applied (PR #42, avoids immediate `SQLITE_BUSY` on concurrent open). No
-  `RelationshipRepository`, `StructureRepository`, `EntityRepository`, or
-  `ProvenanceRepository`, see `Known_Gaps.md`.
-  See `Overview/Master_Roadmap.md`'s Phase 2.5 section; CorpusRegression verifies
-  registration only, not analysis output.
+  units, per-track voice assignment). Does not read time-signature or tempo meta-events. MIDI
+  key-signature scanner (PR #47). **MusicXmlExport** (`src/export/`, single part, synthetic
+  4/4 meter, `xml:id` on notes). No MusicXML/MEI/ABC import.
+- **Persistence:** SQLite storage for NoteEvent (incl. PitchSpelling), Uncertainty (3 kinds),
+  Interpretation (opaque claim), Chord/Key wrappers; busy-timeout fix (PR #42). No
+  Relationship, Structure, Entity or Provenance repository.
+- **Corpus / corpus_stats:** create/list corpora, add/remove/list piece refs; one statistic
+  (most common chord). The 5-piece `framework-v1-reference-set` is registered, but its test
+  checks registration only.
 
 ## Build & test
 
-CMake 3.20+, C11 compiler, SQLite3 (pkg-config) as the only third-party dependency. Tests are
-hand-rolled standalone C executables (150+ across all modules as of PR #46) run via `ctest`,
-plus one architecture-guard test per module (regex-scans `#include` lines against an
-allowlist, fails on violation). CI runs a single Ubuntu job, configure → build → `ctest`.
+CMake 3.20+, C11 compiler, SQLite3 (pkg-config) as the only third-party dependency. 220 kernel
+tests run via root `ctest` and CI (single Ubuntu job), including one architecture-guard test
+per module and valgrind runs. **The 248 framework tests do not run from the root build or
+CI**; each framework adds its tests only when built standalone. Run separately on
+2026-10-05, 247/248 pass; the failure is `architecture_common_practice_minimal`. See
+`Known_Gaps.md`. Ursatz's own `docs/BUILDING.md` has the workaround.
 
 ```
 cmake -S . -B build && cmake --build build
@@ -103,4 +127,11 @@ ctest --test-dir build -C Debug --output-on-failure
 ## What depends on this repo
 
 `Ursatz-Analyzer` (CLI) and `Ursatz-GUI` (web app), both as a git submodule at
-`external/ursatz`. No bindings, no examples directory in active use.
+`external/ursatz`, both pinned at `8a0c9b0` (PR #47). Neither has PR #48 (subset chord
+matching) or any framework from PRs #49 to #97.
+
+## Open branch
+
+`feat/phrase-expansion` (14 commits, standard-form phrase expansion and contraction) is not
+merged. Decision 2026-10-05: hold it until the perception work starts, then merge or drop it
+under the perception path rule (`Dependency_Layer_Specification.md`).

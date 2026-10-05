@@ -1,6 +1,6 @@
 # Technical Design Document — Ursatz Kernel
 
-**Last verified against repo state:** 2026-09-14 (self-audit pass, no repo changes since 2026-09-13). This document is the source for kernel
+**Last verified against repo state:** 2026-10-05 (Ursatz `090695c`, PR #97). This document is the source for kernel
 scope/rationale not already covered by `Overview/Architecture_Principles.md` (25 Laws, layer
 model) or the dedicated specs (Domain, API Contract, Canonical IR, Dependency & Layer, Test).
 Read those first; this fills in what's left.
@@ -23,23 +23,23 @@ collapse them for convenience.
 | Phase | Scope | Design-time status |
 |---|---|---|
 | 1 | Kernel: EntityID, Duration, MusicalTime, TimeSpan, PitchIdentity, PitchSpelling, NoteEvent, Voice, RelationshipReference, ProvenanceReference | Complete |
-| 2 | Temporal/Score: Meter, MeterMap, Measure, Clef, Staff, Part, NotationPosition, Tempo, TempoMap, Dynamics, Articulation | Not started (GUI/persistence work happened instead — see `Status.md`) |
-| 3 | Pitch/Semantics: PitchClass, PitchRealization, Tuning, Interval, Sonority, Scale, ScaleDegree, Contour, RhythmicPattern | Partially started — `TuningSystem`/`PitchRealization` types exist, unused by any analyzer; PitchClass, Sonority, Contour, RhythmicPattern implemented |
-| 4 | Context/Interpretation: Context, Observation, Candidate, Hypothesis, Interpretation, Evidence, Uncertainty, Framework | Interpretation implemented (thin-wrapper form); Context/Observation/Hypothesis/Evidence not started |
+| 2 | Temporal/Score: Meter, MeterMap, Measure, Clef, Staff, Part, NotationPosition, Tempo, TempoMap, Dynamics, Articulation | Partial. Value types built: TimeSignature (Meter), Clef, StaffPosition, KeySignature, NoteValue, Tuplet, MetronomeMarking, TempoMarking; Measure, Staff, Part, Dynamics, Articulation built. MeterMap, TempoMap not started; MIDI import reads neither meter nor tempo |
+| 3 | Pitch/Semantics: PitchClass, PitchRealization, Tuning, Interval, Sonority, Scale, ScaleDegree, Contour, RhythmicPattern | Implemented (plus PitchNumericValue, GenericInterval). PitchTrajectory not started |
+| 4 | Context/Interpretation: Context, Observation, Candidate, Hypothesis, Interpretation, Evidence, Uncertainty, Framework | Implemented as base types. Uncertainty has 3 of 8 kinds. Analyzers produce Interpretation + Evidence only |
 | 5 | Structures: Motif, Occurrence, Figure, Phrase, Cadence, Theme, Section, Movement, Work | Implemented as L5 shells |
 | 6 | Relationships/Provenance: Relationship, Predicate, Evidence, ProvenanceActivity/Agent, Derivation, AuditEvent | Relationship implemented and in real use; Provenance model beyond the reference type not started |
-| 7 | Transformation: all 11 concrete transforms | Implemented |
+| 7 | Transformation: concrete transforms | Implemented (12, including IntervallicManipulation) |
 | 8 | Analysis: all analyzers | Implemented (see `Status.md`) |
-| 9 | Theory Framework: Framework, Rule, Constraint, Preference, Heuristic, Tendency, Procedure, StatisticalModel | Framework partial (`common-practice-minimal`); Constraint/Preference deliberate stubs; rest not started |
-| 10 | Species Counterpoint | Not started |
-| 11 | Common-Practice Harmony (full plugin framework, distinct from `common-practice-minimal`) | Not started |
-| 12 | Generation | Not started |
+| 9 | Theory Framework: Framework, Rule, Constraint, Preference, Heuristic, Tendency, Procedure, StatisticalModel | Implemented as base types except Procedure. Constraint/Preference evaluation deliberately stubbed; Tendency/StatisticalModel shape only |
+| 10 | Species Counterpoint | Implemented as a rule library (`frameworks/standard-counterpoint`, species 1-5) |
+| 11 | Common-Practice Harmony (full plugin framework, distinct from `common-practice-minimal`) | Partial: rule libraries built (`standard-tonality`, `standard-harmony`); the harmonic analyzer that feeds them from NoteEvents is not |
+| 12 | Generation | Base types implemented; Generator/IntentCompiler orchestration not started |
 | 13 | Hierarchical Generation | Not started |
 | 14 | I/O: MIDI, MusicXML, MEI, ABC | MIDI import + MusicXML export implemented; MEI/ABC not started |
 | 15 | Corpus | Implemented (minimal) |
 | 16 | OCR | Not started |
 | 17 | Audio | Not started |
-| 18 | Advanced Frameworks | Not started |
+| 18 | Advanced Frameworks | Style-period frameworks built as rule libraries (16th-century, high-Baroque fugue, ground bass, Galant schemas, scale harmonization); the listed examples (jazz, Schenkerian, etc.) not started |
 
 ## Phase-0 deliverable inventory
 
@@ -93,3 +93,7 @@ interpretations, procedures, or annotations, not by modifying core classes. A ne
 enters the foundational kernel only if: (1) framework-neutral, (2) required by multiple
 subsystems, (3) not reasonably representable as an extension, (4) semantically stable,
 (5) introduces no theory leakage.
+
+**Narrow exception (2026-10-05): vocabulary enums.** A plain enum that only names a theory
+concept (no EntityID, no data, no framework claim) may live in `src/semantics/` when two or
+more frameworks need the same name. See `Dependency_Layer_Specification.md`.

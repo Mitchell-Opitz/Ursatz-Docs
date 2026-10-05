@@ -1,9 +1,8 @@
 # Canonical IR Specification (Deliverable N)
 
-**Last verified against repo state:** 2026-09-14 (self-audit pass, no repo changes since 2026-09-13). This is a Phase-1 kernel spec; Phase-1
-objects are complete and unchanged since; nothing in the 2026-09-09 Framework Stage session
-or since (through Ursatz PR #46) touched this layer. Content below is otherwise unchanged
-from the prior version (previously "v3").
+**Last verified against repo state:** 2026-10-05 (Ursatz `090695c`, PR #97). This is a Phase-1 kernel spec; Phase-1
+objects are complete. PRs #49 to #97 added new L2/L3/L4 types (see `Status.md`) but changed
+none of the Phase-1 objects this spec covers.
 
 Source: Technical Design Document, System Registry, Dependency & Layer Specification,
 Domain Specification.
