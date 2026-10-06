@@ -238,7 +238,7 @@ tests, including 17 framework guards, do not run from the root build or CI yet (
 | Category | Deferred to | Why not testable yet |
 |---|---|---|
 | Context | Future Context spec | Context composition not yet specified |
-| Theory | Future Theory/Rule/Constraint spec | Partially addressed: each framework has per-rule unit tests (248 total), but they run outside CI, and `constraint_evaluate`/`preference_rank` remain deliberate stubs |
+| Theory | Future Theory/Rule/Constraint spec | Partially addressed: each framework has per-rule unit tests (248 total), but they run outside CI, and `preference_rank` remains a deliberate stub (`constraint_evaluate` is covered for standard-harmony and standard-counterpoint) |
 | Analysis Regression | — | **Partially addressed**: analyzer-level unit/regression tests exist per analyzer, but the full-corpus verification pass (`framework-v1-reference-set`, all 5 pieces, output checked not just registration) is still the open item — see `Overview/Master_Roadmap.md` |
 | Generation Validation | Generation phase | `Intent`/`ConstraintExtraction`/`Candidate`/etc. exist as real base types (`src/generation/`), but no `Generator`/`IntentCompiler` orchestration exists to produce output worth regression-testing — see `Registry/Registry_Theory_Analysis.md` |
 | Corpus Regression | — | `CorpusRegression` test exists but verifies registration only, not analysis output |

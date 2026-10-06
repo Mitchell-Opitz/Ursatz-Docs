@@ -65,8 +65,10 @@ L8. Placement re-confirmed 2026-09-09; see `Dependency_Layer_Specification.md`.
   Texture (PR #64).
 
 **L7 Theory:** Framework, Rule, RuleEvaluation, Constraint, Preference, Heuristic, Tendency,
-StatisticalModel, StyleModel all exist as base types. `constraint_evaluate()` and
-`preference_rank()` are deliberate stubs that always return a documented placeholder.
+StatisticalModel, StyleModel all exist as base types. `constraint_evaluate()` dispatches
+to a framework-registered callback (standard-harmony and standard-counterpoint register
+theirs; a Constraint with no callback returns `CONSTRAINT_EVAL_NOT_IMPLEMENTED`).
+`preference_rank()` remains a deliberate stub.
 Tendency, StatisticalModel and StyleModel are shape only (no fitting).
 
 **Framework extension modules (`frameworks/`, 17):**

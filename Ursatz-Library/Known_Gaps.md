@@ -80,9 +80,10 @@ when reached.
 Relationships in its own stopgap table (`ursatz_gui_relationships`). Retire it once a
 `RelationshipRepository` exists.
 
-**`Constraint`/`Preference` evaluation is stubbed.** `constraint_evaluate()` and
-`preference_rank()` validate arguments and return a placeholder. Frameworks check rules
-through their own `*_rule_holds()` instead. Blocks real Generation (Phase 12).
+**`Preference` evaluation is stubbed.** `preference_rank()` validates arguments and returns a
+placeholder. (`constraint_evaluate()` is real as of L5.1: standard-harmony and
+standard-counterpoint register evaluation callbacks; other frameworks still return
+`CONSTRAINT_EVAL_NOT_IMPLEMENTED`.) Blocks real Generation (Phase 12).
 
 **Theory to Corpus (open by design).** `Tendency`/`StatisticalModel`/`StyleModel` accept corpus
 data only as opaque pre-computed values. Expected for the current phase.
